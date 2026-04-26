@@ -84,6 +84,22 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 **unit test 12/12 통과**:
 1 NORMAL · 2 SILENT · 3 ASK_USER · 4 TOOL_ERROR · 5 API_ERROR(R12) · 6 SILENT skip(글쓴이 가드) · 7 None fail-safe · 8 TOOL_ERROR 누적 · 9 ASK_USER 보존 · 10 SILENT direct 필터 · 11 P1.6 self-noise · 13 Idle(6번=1번 통합)
 
+**P1 진행 history (전체)**:
+1. P1 1차: stream-json 파서 + silent_detector + ask_user_forwarding 3종 (df10484)
+2. 1차 라이브 검증: 4 baseline (NORMAL/NORMAL/ASK_USER/NORMAL) — TOOL_ERROR/SILENT 미잡음
+3. P1.5 디버그: silently fail 진단 추가 — **결국 진단 오인** (어제 파일만 봤음)
+4. P1 v2 재설계: 마지막 값 overwrite → any-pattern 누적 (560a4e4)
+5. P1 v3: caller + self-noise path 통합 (3e38881)
+6. P1 v3.1: R12 API_ERROR push (ed59a54)
+7. R13 사고: 봇 시스템 프롬프트 평문 키 노출 → redact 패턴 5종 추가
+8. P1.6: self-noise SILENT 가드 + Idle 1번 흡수 (91b57fb)
+
+**글쓴이 Stop Hook 대비 captain-hook 가치 (실측)**:
+- 라이브 13건 중 4건 = bg SILENT 분기 (last_user_tool=Bash 진짜 SILENT)
+- → **31% 추가 알림 보장** (글쓴이 Stop Hook은 turn 종료 시점만, bg 작업 분기 X)
+- TOOL_ERROR 2건도 글쓴이 Stop Hook 미커버 영역
+- ASK_USER 1건은 글쓴이 핵심 가치와 동일
+
 **남은 작업** (P2 또는 P5):
 - P2 silent 요약 레이어 (Haiku/Flash로 30단어)
 - P3 HTTP /notify 엔드포인트 (인증 포함)
