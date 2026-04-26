@@ -4,7 +4,7 @@
 
 **"Claude는 알고 조용히 끝나지만, 사용자에겐 전달되지 않는다."**
 
-## 누락 패턴 3종
+## 누락 패턴 4종
 
 ### A) Turn 안 보고 누락
 - 봇은 turn 종료는 안다 → 빈 응답이 가는 정도
@@ -21,6 +21,20 @@
 - `Agent(run_in_background=true)`로 띄운 서브에이전트
 - marker file 패턴(`touch /tmp/<id>.done`)으로 보완 중
 - 동일하게 "marker touch 깜빡 위험"
+
+### D) 백그라운드 실패의 침묵 ⚠️ 실무 페인포인트 1번
+- 사용자: "harness 돌려둬"
+- Claude: "OK, 백그라운드로 돌립니다 PID 12345" → turn 종료
+- bg 작업: 5초 만에 import error → exit 1 → 프로세스 사라짐
+- cct-notifier polling: PID 사라짐 = 완료? 실패? **구분 없으면 모두 "완료"로 잘못 알림**
+- 결과: 사용자는 "성공한 줄" 알고 30분 뒤 결과 보러 갔다가 빈 손
+- 본 시스템 동기 1번에 해당하는 패턴 — 반드시 잡아야 함
+
+#### 분기 요구사항
+- `exit_code == 0` → ✅ 완료 알림
+- `exit_code != 0` → ⚠️ 실패 알림 + stderr tail 30줄 첨부
+- `exit_code 잡지 못함` (PID 단순 사라짐) → ❓ "비정상 종료 가능성" 알림
+- 위 3분기는 cct-notifier 또는 wrapper 레이어에서 보장 필요
 
 ## 왜 sample2의 Stop Hook으로는 못 푸는가
 

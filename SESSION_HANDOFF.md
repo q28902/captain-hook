@@ -18,20 +18,27 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 - sample2 검토 완료 → 본체 운영 X 결정, 핵심 패턴만 흡수 (P4)
 - 3층 구조 + Phase 1~4 로드맵 확정
 
-## 다음 세션 즉시 착수 — Phase 1 (P1)
+## 다음 세션 즉시 착수 — Phase 0 (P0) ⚠️ P1 아님
 
-**목표**: 봇 stream-json에서 백그라운드 도구 호출 자동 감지 → cct-notifier 자동 등록.
+**우선순위 재배치 (2026-04-26 세열님 5개 지적 반영)**:
+- P0 신설 (1주일 stream-json 덤프) — P1 진입 전 필수
+- P1: 파서 + bg 실패 가시화 (D 패턴 포함, wrapper 인터셉트 방식)
+- P2: silent_detector + 요약 레이어
+- P3: HTTP /notify (인증 포함)
+- P4: middleware PR + Stop Hook
 
-### 단계
-1. **진입점 분석**: `/Volumes/AIDRIVE/claude-code-telegram/src/claude/sdk_integration.py` 읽고 stream-json 이벤트 흐름 파악
-2. **모듈 신설**: `src/captain_hook/stream_parser.py`, `src/captain_hook/auto_register.py`
-3. **감지 패턴 구현**:
-   - `Bash(run_in_background=true)` → tool_use 이벤트에서 PID 추출
-   - `Bash(command="nohup ... &")` → 정규식 매칭
-   - `Agent(run_in_background=true)` → marker file 약속 추출
-4. **cct-notifier 등록**: `~/Projects/claude/cct-notifier/scripts/notify-when-done.sh` subprocess 호출
-5. **봇 응답 첨부**: turn 종료 메시지에 "🔔 추적 등록: N개" 자동 추가
-6. **테스트**: 5분짜리 백그라운드 명령 실행 → 자동 등록 → 5분 후 알림 확인
+자세한 근거: [`docs/RISKS.md`](docs/RISKS.md), [`docs/P0_DUMP.md`](docs/P0_DUMP.md), [`docs/DESIGN.md`](docs/DESIGN.md) 우선순위 섹션.
+
+### Phase 0 단계
+1. `/Volumes/AIDRIVE/claude-code-telegram/src/claude/sdk_integration.py` 읽기 — stream-json 수신 루프 위치 파악
+2. 로깅 훅 한 블록 추가 (P0_DUMP.md 코드 그대로) — 부작용 0 원칙
+3. 봇 재시작 → `~/Projects/claude-captain-hook/dumps/YYYY-MM-DD.jsonl` 누적 시작
+4. 일일 카운트 점검 (jq 명령은 P0_DUMP.md 참조)
+5. 종료 조건 충족 시 (3종 이벤트 각 5건) → SCHEMA.md 작성 → P1 진입
+6. **P0 진행 중에도 다른 작업은 정상 — 로깅이 자동으로 쌓임**
+
+### .gitignore 즉시 추가
+- `dumps/` (P0 stream-json에 민감 정보 포함 가능, 절대 push X)
 
 ### 코드 위치 약속
 

@@ -1,0 +1,19 @@
+# P0 stream-json dumps — may contain API keys, file contents, user messages
+dumps/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Secrets
+.env
+.env.local

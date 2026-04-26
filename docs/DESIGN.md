@@ -34,13 +34,25 @@
   - turn 종료 시 텍스트 응답 0건 감지
   - 마지막 도구 호출 요약을 텔레그램에 강제 푸시
 
-### 감지 패턴
+### 감지 패턴 — wrapper 인터셉트 방식 (Claude 의존 0)
 
-| 도구 호출 | 추출 | 등록 명령 |
+**원칙**: PID/marker 추출을 출력 파싱·Claude 약속에 의존하지 말고, **봇이 명령 자체를 변형**해서 결정론적으로 추출한다.
+
+| 도구 호출 | 봇이 변형한 명령 | 결과 |
 |---|---|---|
-| `Bash(run_in_background=true)` | PID (Bash 결과 메시지에서) | `notify-when-done.sh --pid N --max-min M` |
-| `Bash(command="nohup ... &")` | PID (heuristic) | 동일 |
-| `Agent(run_in_background=true)` | marker file 경로 (서브에이전트 약속) | `notify-when-done.sh --marker /tmp/X.done` |
+| `Bash(run_in_background=true, command=X)` | `(X) & __BGPID=$!; echo "CAPTAIN_HOOK_BGPID:$__BGPID" > /tmp/captain/<turn>:<call>.pid` | PID 결정론적 |
+| `Bash(command="nohup X &")` | 동일 wrapper (X 추출 후 재구성) | 동일 |
+| `Agent(run_in_background=true)` | SubAgent 호출을 wrapper subprocess로 감싸 `trap "touch /tmp/captain/<id>.done" EXIT` | marker 강제 touch |
+
+추가 보강:
+- **PID fingerprint**: PID + start_time(`ps -o lstart= -p <pid>` 또는 `/proc/<pid>/stat`의 starttime)을 함께 저장. PID 재사용 오탐 방지
+- **exit_code 캡처**: wrapper가 `wait $__BGPID; echo "CAPTAIN_HOOK_EXIT:$?" >> /tmp/captain/<id>.exit` 추가. cct-notifier가 이걸 읽어 D) 패턴 분기
+- **Idempotency key**: `<turn_id>:<tool_call_id>` 해시 → 봇 재시작 시 중복 등록 방지
+
+### 통합 지점
+- SDK 호출 시작 → 빈 백그라운드 set 초기화
+- stream-json `tool_use` 이벤트 도착 → **명령 변형 후 SDK에 다시 주입** (가능한 경로 확인 필요 — 안 되면 stream에서 pre-hook 단계 또는 자동 등록만 fallback)
+- turn 종료 → 등록된 작업 N개 텔레그램 메시지에 첨부
 
 ### 통합 지점
 - SDK 호출 시작 → 빈 백그라운드 set 초기화
@@ -81,26 +93,45 @@
 - 알림 메시지에 "trigger source" 메타데이터 추가 (`bot stream-parser` / `cli stop-hook`)
 - 어디서 등록됐는지 추적 가능
 
-## 우선순위 로드맵
+## 우선순위 로드맵 (재배치 — 2026-04-26 세열님 5개 지적 반영)
 
-### Phase 1 — P1: stream-json 파서
-- `src/captain_hook/stream_parser.py` 작성
-- `Bash(run_in_background=true)` / `Agent(run_in_background=true)` 감지
-- `auto_register.py` 작성 → cct-notifier `notify-when-done.sh` 호출
-- 통합 테스트: 의도적 백그라운드 작업 → 자동 등록 확인
+### Phase 0 — P0: stream-json 이벤트 덤프 (신규, 1~2일)
+**목적**: 추측한 스키마로 파서 작성 → production 첫 turn에서 깨지는 흐름 회피.
 
-### Phase 2 — P2: 빈 응답 감지
+- `sdk_integration.py`에 단순 로깅 훅 추가 — 모든 stream-json 이벤트를 jsonl로 디스크에 기록
+- 1주일치 실제 데이터 수집 (캡처 위치: `~/Projects/claude-captain-hook/dumps/YYYY-MM-DD.jsonl`)
+- 종료 조건: `Bash(run_in_background=true)` / `Bash(nohup ... &)` / `Agent(run_in_background=true)` 이벤트 각각 최소 5건 수집
+- **이게 끝나기 전에는 P1 절대 착수 X**
+- 자세한 plan: [`docs/P0_DUMP.md`](P0_DUMP.md)
+
+### Phase 1 — P1: 파서 + bg 실패 가시화 (P0 데이터 기반)
+- `src/captain_hook/stream_parser.py` 작성 (실측 스키마 기준)
+- **wrapper 인터셉트**: PID·marker·exit_code 결정론적 추출 (위 "감지 패턴" 참조)
+- `auto_register.py` 작성 → cct-notifier 호출, idempotency key 적용
+- D) 패턴: cct-notifier 알림에 exit_code 분기 (✅/⚠️/❓) 적용 — cct-notifier 측 보강 필요할 수도
+- 통합 테스트:
+  - 정상 종료 5분 작업 → ✅ 알림
+  - import error로 즉시 죽는 작업 → ⚠️ 실패 알림 + stderr tail
+  - PID 재사용 시나리오 → fingerprint로 차단
+
+### Phase 2 — P2: silent_detector + 요약
 - `silent_detector.py` 작성
-- turn 종료 시 텍스트 응답 0건 → 마지막 도구 + 결과 자동 요약 푸시
+- turn 종료 시 텍스트 응답 0건 또는 마지막 도구 결과만 있는 경우 감지
+- **요약 레이어**: 마지막 도구 결과가 길면 Haiku/Gemini Flash로 30단어 요약 (비용 < $0.001/turn). news_intel의 stenographer 패턴 재활용
 
-### Phase 3 — P3: 외부 호출용 HTTP 엔드포인트
+### Phase 3 — P3: 외부 호출용 HTTP 엔드포인트 (인증 포함)
 - 봇 안에 `POST /notify` 엔드포인트 추가
+- **shared secret 인증 필수** — 헤더 `X-Captain-Hook-Token` 검증, .env로 관리
+- localhost 바인딩이어도 인증 박는다 (다른 컨테이너·n8n 등이 같은 네트워크에서 접근 가능)
 - 다른 시스템(news_intel, n8n)이 텔레그램 송신 채널로 활용
 
-### Phase 4 — P4: Stop Hook 등록
-- `hooks/notify_stop.py` 작성
-- ~/.claude/settings.json에 등록
-- CLI 직접 사용 시나리오 검증
+### Phase 4 — P4: middleware PR + Stop Hook 등록
+- **upstream PR 1개 먼저**: `RichardAtCT/claude-code-telegram`에 middleware/plugin 인터페이스 제안
+  - captain-hook은 그 인터페이스의 첫 사용자로 외부 패키지화
+  - upstream 안 깨지고, 다른 사용자도 같은 문제 풀 수 있는 공개 레이어로 진화
+  - 글감: "수단이 다름" 비교표 자체가 이미 PR description으로 사용 가능
+- `hooks/notify_stop.py` 작성 (sample2 차용)
+- `~/.claude/settings.json`에 등록 (CLI 직접 사용 백업)
 
 ## 비채택 메모
 
@@ -110,8 +141,19 @@
 
 ## 검증 체크리스트
 
-- [ ] 백그라운드 작업 5분짜리 시작 → 자동 등록 → 5분 후 알림 도착
-- [ ] Subagent marker 약속 → marker touch → 알림 도착
-- [ ] Turn 종료 시 빈 응답 → "조용한 종료" 메시지 푸시
+### 기능
+- [ ] 백그라운드 작업 5분짜리 시작 → wrapper 변형 → 자동 등록 → 5분 후 ✅ 알림
+- [ ] import error로 즉사하는 작업 → ⚠️ 실패 알림 + stderr tail 30줄
+- [ ] PID 단순 사라짐(SIGKILL 등) → ❓ "비정상 종료 가능성" 알림
+- [ ] Subagent wrapper trap → marker 100% touch → 알림
+- [ ] Turn 종료 시 빈 응답 → 마지막 도구 30단어 요약 푸시
 - [ ] CLI 직접 사용 시 Stop Hook 발화 확인
-- [ ] 봇 재시작 후에도 등록된 작업 polling 지속 (cct-notifier 독립성 확인)
+
+### 결정론·견고성
+- [ ] PID 재사용 시나리오 (PID 12345 → 다른 프로세스) → fingerprint로 차단
+- [ ] 봇 재시작 시 같은 turn의 bg task → idempotency key로 중복 등록 안 됨
+- [ ] HTTP /notify 무인증 호출 → 401 거부
+- [ ] 봇 재시작 후에도 등록된 작업 polling 지속 (cct-notifier 독립성)
+
+### 외부 영향
+- [ ] upstream `claude-code-telegram` 업데이트 시 captain-hook 자동 호환 (middleware 인터페이스 경유)
