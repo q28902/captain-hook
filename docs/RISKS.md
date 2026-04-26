@@ -110,6 +110,23 @@ A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 | 9 | 메타 누락 (자체 침묵) | P5 heartbeat |
 | 10 | 봇 AskUserQuestion 처리 0 | P1 ask_user_handler 신설 |
 | 11 | self-noise: 분석 도구 overwrite | P1 v2 any-pattern + path 필터 |
+| 12 | API_ERROR push 누락 | P1 v3.1 silent_detector_decide 분기 추가 |
+
+## R12 — API_ERROR push 누락 (P1 v3 결함, 2026-04-26 자연 발생 1건 발견)
+
+**증상**: result.is_error=true + result=null + terminal_reason=null인 turn 발생 (1777203673).
+- 직전 시퀀스: docs Edit 2건 + Bash git commit 도중 강제 종료
+- 사용자가 본 마지막 = Bash git commit tool_use, 봇 응답 0건
+- captain.classify는 TURN_END_API_ERROR 정상 분류
+- 그러나 silent_detector_decide는 SILENT/TOOL_ERROR만 push, **API_ERROR 분기 X** → 사용자 알림 0
+
+**원인**: P1 v1~v3 silent_detector_decide 명세에 API_ERROR 빠짐.
+
+**처리 (P1 v3.1)**:
+- `silent_detector_decide`에 API_ERROR 분기 추가
+- 글쓴이 가드(text_response_count) **무시** — turn 자체가 강제 종료라 알림 필수
+- 푸시 메시지: "🛑 Claude turn 비정상 종료 — API/SDK 에러. 응답 누락 가능. 마지막 도구 호출이 잘렸을 수 있음."
+- unit test 5번 갱신 (replies=1 + 비정상 종료 마커)
 
 ## R11 — Self-noise overwrite (P1 v1 결함, 2026-04-26 라이브 검증 결과)
 

@@ -194,9 +194,9 @@ def main() -> int:
         print("       [FAIL] tool_error silent payload missing or wrong format")
         fails += 1
 
-    # 5) API_ERROR — result.is_error true
+    # 5) API_ERROR — result.is_error true. R12: silent_detector도 푸시해야 함
     ok, _, _, silent, _ = run_branch(
-        "5) API_ERROR",
+        "5) API_ERROR (R12)",
         [
             fx_assistant_text("trying..."),
             fx_message_delta("end_turn"),
@@ -206,9 +206,9 @@ def main() -> int:
     )
     if not ok:
         fails += 1
-    # silent_detector는 API_ERROR 대상 X
-    if silent is not None:
-        print("       [FAIL] silent should be None for API_ERROR")
+    # R12: API_ERROR도 푸시 (silent != None)
+    if silent is None or "비정상 종료" not in silent.get("text", ""):
+        print("       [FAIL] API_ERROR push missing (R12 regression)")
         fails += 1
 
     # 6) SILENT skip — 글쓴이 가드 (text_response_count > 0)

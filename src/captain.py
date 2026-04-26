@@ -207,8 +207,18 @@ def classify(raw_data: Any, state: TurnState) -> TurnEnd:
 # Silent Detector
 # ============================================================
 def silent_detector_decide(state: TurnState, classification: TurnEnd) -> Optional[dict]:
-    """SILENT 또는 TOOL_ERROR 시 강제 푸시 payload."""
+    """SILENT/TOOL_ERROR/API_ERROR 시 강제 푸시 payload.
+
+    R12 (2026-04-26): API_ERROR도 푸시 — 사용자에게 turn 강제 종료 알림 필수.
+    봇 본체가 자체 통보 안 하면 사용자가 모름 (실측 1건 발생).
+    """
     try:
+        if classification == TurnEnd.TURN_END_API_ERROR:
+            # API_ERROR는 글쓴이 가드 무시 — turn 자체가 강제 종료라 알림 필수
+            return {
+                "text": "🛑 Claude turn 비정상 종료 — API/SDK 에러. 응답 누락 가능. 마지막 도구 호출이 잘렸을 수 있음.",
+                "level": "error",
+            }
         if classification not in (TurnEnd.TURN_END_SILENT, TurnEnd.TURN_END_TOOL_ERROR):
             return None
         if state.text_response_count > 0:

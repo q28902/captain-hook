@@ -156,11 +156,11 @@ async def main():
         fx_result("end_turn"),
     ], expect_replies=1, expect_marker="도구 실패")
 
-    # 5. API_ERROR — push 0 (silent_decide 대상 X)
-    await run("5) API_ERROR", [
+    # 5. API_ERROR — R12: push 1 (사용자에 turn 강제 종료 알림)
+    await run("5) API_ERROR (R12)", [
         fx_assistant_text("trying..."), fx_message_delta("end_turn"),
         fx_result("end_turn", is_error=True),
-    ], expect_replies=0)
+    ], expect_replies=1, expect_marker="비정상 종료")
 
     # 6. SILENT skip — 글쓴이 가드
     await run("6) SILENT skip (guard)", [
