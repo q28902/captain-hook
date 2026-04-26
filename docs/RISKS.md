@@ -112,6 +112,31 @@ A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 | 11 | self-noise: 분석 도구 overwrite | P1 v2 any-pattern + path 필터 |
 | 12 | API_ERROR push 누락 | P1 v3.1 silent_detector_decide 분기 추가 |
 | 13 | 봇 시스템 프롬프트 평문 키 노출 | redact 패턴 5종 추가 + 봇 본체 환경변수 이전 |
+| 14 | dumps 파일 날짜 분기 진단 실수 | 항상 ls -lt로 최근 파일 확인 |
+| 15 | ASK_USER push 텔레그램 미도착 (코드 대칭인데 비대칭 동작) | P1.7 stderr print + plain fallback |
+
+## R15 — ASK_USER push 텔레그램 미도착 (2026-04-27 라이브 검증)
+
+증상:
+- captain.py ask_user_forwarding_decide payload 결정 정상 (decision log ask_user_pushed=true 박힘)
+- sdk_integration P1 hook의 stream_callback 호출 완료 (silent와 동일 emit 코드)
+- orchestrator captain_ask_user 분기 코드 정상 (silent와 본문 100% 대칭)
+- 그러나 텔레그램 미도착 (세열 시각 검증 N)
+
+진단 한계:
+- 봇 stderr (/tmp/bot.log)에 "captain ask_user push failed" 0건 → except 진입 자체 없음
+- "BadRequest", "Markdown" 키워드 0건
+- silent_push는 정상 도착 → 인프라/권한 문제 아님
+- 코드 대칭이라 정적 grep으로 원인 식별 불가
+
+P1.7 패치 (work/orchestrator.py):
+- stderr 강제 print: entry, Markdown OK/FAILED, plain fallback 시도
+- 다음 cp + 재시작 후 ASK_USER 1건 trigger → /tmp/bot.log grep으로 silent fail 위치 즉시 식별
+
+기대:
+- "[captain ASK_USER] entry" 0건 → orchestrator 분기 진입 자체 안 됨 (update_obj.type 매칭 실패)
+- "Markdown FAILED" 보임 → Markdown parse 에러 확정 → plain fallback이 도착해야 정상
+- 둘 다 OK인데 텔레그램 미도착 → 텔레그램 API 자체 문제 (rate limit, 세션 timeout 등)
 
 ## R13 — 봇 시스템 프롬프트 평문 키 노출 (2026-04-27 사고)
 
