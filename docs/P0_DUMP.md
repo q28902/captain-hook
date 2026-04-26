@@ -124,22 +124,25 @@ echo "=== 임계 도달 여부 ==="
 - exit_code·stderr 캡처 가능 시점
 - Agent SubAgent 호출 시 marker file 약속이 prompt 어디에 박히는지
 
-## §매핑검증 — turn-end 6가지 상황 (글쓴이 분류 기준)
+## §매핑검증 — turn-end 6가지 상황 (P0 1차 dump 후 갱신)
 
-P0 덤프 분석 시 stream-json에서 다음 6가지가 각각 어떤 이벤트 시퀀스로 구분되는지 식별:
+**1차 결과**: SDK가 `stop_reason` + `terminal_reason` + `is_error` 필드로 구분 신호 직접 노출. 휴리스틱 불필요. 자세한 confidence 등급은 [`docs/SCHEMA.md`](SCHEMA.md) 참조.
 
-| # | 상황 | stream-json 식별 가설 | active 검증 방법 |
+| # | 상황 | SDK 신호 (1차 확정) | 등급 |
 |---|---|---|---|
-| 1 | 명시적 완료 | message_stop + 텍스트 ≥ 1 | 일반 turn 1건 |
-| 2 | AskUserQuestion | tool_use(name=AskUserQuestion) 직후 종료 | 의도 호출 1건 |
-| 3 | 정보 제공 후 대기 | 1과 동일 추정 | 1과의 차이 검증 |
-| 4 | 에러/블로커 | error 이벤트 + 비정상 종료 | 의도적 빌드 실패 1건 |
-| 5 | 도구 사용 후 응답 대기 | 도구 결과 + 텍스트 0 | silent_detector 핵심 타겟 |
-| 6 | Idle | 1과 동일? 모호 | 별도 종료 신호 있는지 확인 |
+| 1 | 명시적 완료 | `stop_reason: "end_turn"` + `terminal_reason: "completed"` | 🟡 |
+| 2 | AskUserQuestion | tool_use 직후 종료 + tool name 검사 | 🔴 |
+| 3 | 정보 제공 후 대기 | 1번과 동일 추정 | 🔴 |
+| 4 | 에러/블로커 | `is_error: true` 또는 `api_error_status != null` | 🔴 |
+| 5 | 도구 사용 후 응답 대기 | `stop_reason: "tool_use"` (직접!) | 🟢 |
+| 6 | Idle | 1번과 동일한 end_turn? 구분 미확인 | 🔴 |
 
-- 4번 = D 패턴(실패 침묵)과 겹침 → 분기 매핑 확인 필수
-- 5번 = silent_detector 핵심 타겟 (텍스트 0건 + 도구 결과 ≥ 1)
-- 6번 = Anthropic SDK가 별도 신호로 구분하는지 미상 → P0에서 확정
+### Active 라벨 우선순위 (1차 결과 반영, 재정렬)
+
+1. **`is_error: true` 유도 (4번)** — `python -c "import nonexistent"` 의도 실패. result 페이로드의 is_error / api_error_status 위치·값 확정 → P1 D 패턴 분기 직결
+2. **AskUserQuestion 호출 (2번)** — Aki가 텔레그램에서 의도 호출. tool_use 직후 stop_reason 매핑
+3. **1번 vs 6번 구분** — 도구 0개 turn vs 도구만 사용 turn 비교
+4. **bg 도구 호출 (B/C 패턴)** — passive 누적 대기 또는 의도 호출
 
 §종료 조건 표에 6가지 각각 ≥ 1건 도달 조건 포함됨.
 

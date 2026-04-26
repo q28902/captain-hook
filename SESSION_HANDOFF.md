@@ -52,6 +52,19 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 - `scripts/p0_check.sh` jq cookbook commit + 매일 실행 → 임계 자동 판정
 - 로깅 코드는 try/except + redaction 정규식 6종 (sk-/Bearer/AIza/gho/api_key/사용자경로) 박제됨
 
+### 🟢 P0 1차 dump 결과 (2026-04-26)
+
+- **운영본 교체 완료**: 봇 PID 68472 가동, captain-hook hook 정상 작동
+- **6분류 SDK 직접 신호 발견**: `stop_reason` (end_turn/tool_use) + `terminal_reason` (completed) + `is_error`. 휴리스틱 불필요
+- 5번 silent 타겟 = `stop_reason: "tool_use"` 직접 명시. 100% 캐치 가능
+- 자세한 confidence 등급 + 미관찰 패턴은 [`docs/SCHEMA.md`](docs/SCHEMA.md) 참조
+- `scripts/p0_check.sh` 첫 실행 통과. self-noise 필터 작동 확인
+
+### 다음 active 라벨 1순위
+**`is_error: true` 유도** — `python -c "import nonexistent"` 의도 실패. 4번 에러/블로커 신호 위치·값 확정 → P1 D 패턴 분기 직결.
+
+이후 순서: AskUserQuestion (2번) → 1번 vs 6번 구분 → bg 도구.
+
 ### 코드 위치 약속
 
 봇 본체(`/Volumes/AIDRIVE/claude-code-telegram/`)에 새 모듈 추가:
