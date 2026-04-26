@@ -41,11 +41,35 @@
 - 🟡 **부분 확정** — 발견은 됐으나 다른 케이스와 구분 불가능 / 페이로드 미분석
 - 🔴 **미관찰** — active 라벨 데이터로 유도 필요
 
-## rate_limit_event (🟡 신규)
+## rate_limit_event (🟢 분석 완료)
 
-페이로드 미분석. P1 파서에서 별도 분기 필요. P5 heartbeat 알림에도 활용 가치 있음 (rate limit 도래 = 메인 봇 일시 무력 신호).
+5시간 단위 quota 정보를 SDK가 주기적으로 push하는 메타 이벤트. P0 1차 dump 5건 모두 `status: "allowed"`, `isUsingOverage: false` — 정상 신호.
 
-추가 분석 필요: `jq 'select(.raw.type=="rate_limit_event")' DUMP`
+### 페이로드 스키마
+
+```json
+{
+  "type": "rate_limit_event",
+  "rate_limit_info": {
+    "status": "allowed",          // string — 정상 시 "allowed", 도래 시 "blocked" 등 (미관찰)
+    "resetsAt": 1777200000,       // unix ts — 5h quota reset 시점
+    "rateLimitType": "five_hour", // string — quota 단위
+    "overageStatus": "allowed",   // string — 오버 사용 허용 여부
+    "overageResetsAt": 1777593600,// unix ts — overage reset 시점
+    "isUsingOverage": false       // bool — 현재 오버 사용 중인지
+  },
+  "uuid": "...",                  // string
+  "session_id": "..."             // string — 추적 키
+}
+```
+
+### 활용 시점
+- **P1**: 일반 분기에서 패스 (정보용)
+- **P5 heartbeat**: `status != "allowed"` 또는 `isUsingOverage: true` 도래 시 별도 채널 알림 (메인 봇 일시 무력 신호)
+- **운영 모니터링**: resetsAt 기준 quota 소진 속도 추적 가능
+
+### 빈도
+PING-PONG 1쌍 + 분석 2 turn = 5건. turn당 평균 ~1.5건 push (정확한 발생 조건 미상 — turn 시작 시점일 가능성 높음).
 
 ## Self-observation noise — dump-of-dump 현상
 
