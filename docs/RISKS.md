@@ -111,6 +111,37 @@ A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 | 10 | 봇 AskUserQuestion 처리 0 | P1 ask_user_handler 신설 |
 | 11 | self-noise: 분석 도구 overwrite | P1 v2 any-pattern + path 필터 |
 | 12 | API_ERROR push 누락 | P1 v3.1 silent_detector_decide 분기 추가 |
+| 13 | 봇 시스템 프롬프트 평문 키 노출 | redact 패턴 5종 추가 + 봇 본체 환경변수 이전 |
+
+## R13 — 봇 시스템 프롬프트 평문 키 노출 (2026-04-27 사고)
+
+발견:
+- 본 secretarybot 자기점검 turn에서 봇 instruction 또는 CLAUDE.md가 텔레그램 응답에 그대로 노출
+- 노출 키: DeepSeek / OpenRouter / Gemini / n8n / Tavily 5종 평문
+- captain-hook redaction 패턴(sk-, Bearer, api_key=, AIza, gho_, /Users/) 중 sk-/AIza만 부분 매칭
+- 즉 redaction 통과해도 일부 키는 그대로 dump
+
+근본 원인:
+- 봇 본체가 시스템 프롬프트에 키 평문 박음 (환경변수 미사용 또는 fallback)
+- captain redaction이 키 종류 전수 커버 못함
+
+처리:
+1. **키 5종 즉시 회수·rotate** (운영 영향)
+2. **봇 본체에서 시스템 프롬프트 → 환경변수 이전** (captain-hook 범위 외, 별도 작업)
+3. **captain-hook redaction 패턴 추가** (work/sdk_integration.py `_CAPTAIN_REDACT_PATTERNS`):
+   - `sk-or-v1-[a-f0-9]{64}` (OpenRouter)
+   - `AIzaSy[A-Za-z0-9_-]{33}` (Gemini, AIza{30,}보다 정확)
+   - `tvly-(dev|prod)-[A-Za-z0-9]{20,}` (Tavily)
+   - `eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}` (JWT, n8n 등)
+   - `sk-d[0-9a-f]{30,}` (DeepSeek)
+4. **dumps/ 전체 grep + 발견 시 해당 파일 sanitize 또는 삭제** (2026-04-27 격리 완료: `/tmp/leaked-dumps-quarantine/`)
+5. **git history grep + 발견 시 history rewrite** (force push) — 검사 완료, 0 hit ✓
+
+영향 범위:
+- captain-hook 자체 결함은 redaction 미커버만 (3번)
+- 1·2번은 봇 본체 사고. captain-hook은 기록자(messenger). 봇 본체에 R13-ext 별도 박제 권장
+
+처리 시점: 즉시 (P1.5 디버그보다 우선)
 
 ## R12 — API_ERROR push 누락 (P1 v3 결함, 2026-04-26 자연 발생 1건 발견)
 
