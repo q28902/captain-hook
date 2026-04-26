@@ -10,6 +10,7 @@
 - 봇은 turn 종료는 안다 → 빈 응답이 가는 정도
 - Claude가 마지막 도구 결과를 *해석·요약·보고*하지 않은 채 종료
 - 본질: Claude의 보고 의무 위반 (정책 문제)
+- **A-AUQ**: AskUserQuestion 호출 시 SDK 자동 빈 응답으로 질문 자체가 사용자 미노출 ([RISKS.md R10](RISKS.md) 참조)
 
 ### B) 백그라운드 작업 turn 후 완료/실패
 - Claude가 `nohup ... &` / `Bash(run_in_background=true)`로 던지고 turn 종료

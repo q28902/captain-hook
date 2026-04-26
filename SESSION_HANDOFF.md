@@ -79,6 +79,22 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 ### A안/B안 결정 미완료
 세열님 응답이 빈 string ("User has answered: ."). 빈 응답 진짜 원인이 R10 (봇 처리 부재)임이 밝혀짐. 다음 turn에 텍스트로 직접 결정 받으면 진행.
 
+### 🟢 P1 진입 조건 충족 (2026-04-26)
+
+P0 진척도 70% (🟢 4 / 🟡 3 / 🔴 1).
+- 🟢 4: 5번 silent / 4번 도구실패 / 2번 AskUserQuestion / rate_limit_event
+- 🟡 3: 1번 명시완료(6번과 미구분) / 3번 정보후대기(2번 흡수) / 4' API실패(미관찰)
+- 🔴 1: 6번 Idle (일반 turn 자연 누적 대기)
+
+🟡·🔴는 SDK 신호 부재 또는 미관찰뿐 — **P1 설계 차단 요인 아님**.
+
+**P1 작업 묶음 (3종 동시 구현)**:
+1. stream_parser + auto_register (bg 도구 wrapper 인터셉트)
+2. silent_detector + 분기 휴리스틱 (마지막 tool_use.name 검사)
+3. AskUserQuestion forwarding 모듈 (R10 대응, 봇 polling 1x 작업량)
+
+봇 polling 메커니즘 grep 확인: `bot/core.py`, `bot/orchestrator.py`, `bot/handlers/message.py`, `events/types.py` 매칭. python-telegram-bot 라이브러리 사용. → forwarding 1x.
+
 ### 코드 위치 약속
 
 봇 본체(`/Volumes/AIDRIVE/claude-code-telegram/`)에 새 모듈 추가:

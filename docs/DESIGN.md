@@ -117,7 +117,23 @@ SCHEMA.md 분석에 따르면 2번(AskUserQuestion)과 5번(silent)은 SDK 신�
 - **이게 끝나기 전에는 P1 절대 착수 X**
 - 자세한 plan: [`docs/P0_DUMP.md`](P0_DUMP.md)
 
-### Phase 1 — P1: 파서 + bg 실패 가시화 (P0 데이터 기반)
+### Phase 1 — P1: 파서 + bg 실패 가시화 + silent_detector + AskUserQuestion forwarding (P0 데이터 기반)
+
+**P1 = 3종 동시 구현**:
+1. stream_parser + auto_register (bg 도구 wrapper 인터셉트)
+2. silent_detector + 분기 휴리스틱
+3. **AskUserQuestion forwarding 모듈** (R10 대응)
+
+#### AskUserQuestion forwarding 모듈 명세
+
+봇 본체는 `python-telegram-bot` 라이브러리 기반 long polling + reply_to + MessageHandler 메커니즘 보유 확정 (grep 결과: `bot/core.py`, `bot/orchestrator.py`, `bot/handlers/message.py`, `events/types.py`). 따라서 **forwarding은 기존 메커니즘에 hook 1개 추가만 하면 됨 (작업량 1x)**.
+
+- **입력**: `tool_use.input.questions[].{question, options}`
+- **출력**: 텔레그램 메시지 — 옵션을 inline keyboard로 (또는 number prefix 텍스트 fallback)
+- **사용자 응답 수신**: 기존 MessageHandler에 question_id 매칭 hook → 다음 turn user 메시지로 봇이 주입
+- **세션 매칭 패턴**: 글쓴이 sample2 Bridge daemon의 `reply_to_message.message_id` ↔ question_id 매칭 메커니즘과 동일 (참고용으로 sample2 코드 활용)
+
+
 - `src/captain_hook/stream_parser.py` 작성 (실측 스키마 기준)
 - **wrapper 인터셉트**: PID·marker·exit_code 결정론적 추출 (위 "감지 패턴" 참조)
 - `auto_register.py` 작성 → cct-notifier 호출, idempotency key 적용
