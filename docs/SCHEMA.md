@@ -134,6 +134,24 @@ PING-PONG 1쌍 + 분석 2 turn = 5건. turn당 평균 ~1.5건 push (정확한 �
 
 **bg 작업이 turn 종료 후 죽는 케이스**: tool_result는 PID만 반환하고 끝남. 이후 cct-notifier polling에서 exit_code 확인 → wrapper의 `.exit` 파일로 ✅/⚠️ 분기 (DESIGN.md 감지 패턴 참조).
 
+## caller.type 실측 (🟡 분기 신호로 무력)
+
+2026-04-26 P0 dump 분석 결과:
+- 모든 `assistant.message.content[].caller.type == "direct"` (사용자 의도 도구·자동 분석 도구 구분 X)
+- raw_data 최상위 또는 message 안 caller 박힌 케이스 0건
+- source/origin/initiator/agent_type 등 대체 필드 0건
+
+→ **caller로 self-noise 식별 불가**. P1은 path 필터(`captain-hook|/dumps/|_captain_dump_raw|p1_decisions`) 단독 사용. caller 검사는 future-proof로 보조 유지.
+
+## ASK_USER 분기 특이성 (🟢 박제, 2026-04-26 P1 v3)
+
+다른 분기와 구조적으로 다름:
+- TOOL_ERROR / SILENT / NORMAL은 turn 진행 중 누적 신호 의존 (마지막 값 또는 any 패턴)
+- **ASK_USER는 도구 호출 자체가 trigger** — `tool_use.name == "AskUserQuestion"` 발견 즉시 `any_ask_user_question = True`
+- 누적도, 마지막 의존도 아님 — *발생 = 분류*
+
+→ silent_detector의 글쓴이 가드(`text_response_count > 0이면 skip`)는 ASK_USER에 적용 X. ASK_USER는 항상 푸시.
+
 ## Self-observation noise — dump-of-dump 현상
 
 봇 자체가 captain-hook P0 분석을 위해 호출하는 Bash 명령(p0_check.sh, jq 분석 등)도 그대로 dump됨. **P0가 자기 자신을 보고 있음**.

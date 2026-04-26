@@ -80,26 +80,21 @@ P0 stream-json 덤프에 API key·파일 내용·사용자 메시지 포함 가�
 
 P5는 P1~P4 안정화 후 진입.
 
-## R10 — 봇 본체에 AskUserQuestion 처리 로직 0 (2026-04-26 active 라벨 결과)
+## R10 — AskUserQuestion 빈 응답 자동 생성 (SDK 한계, 2026-04-26 active 라벨 결과)
 
-`grep -rn "AskUserQuestion\|ask_user\|permission_prompt" /Volumes/AIDRIVE/claude-code-telegram/src/` → **0건**.
+stdin 막힘 → SDK 자동 빈 응답 → 사용자에 질문 노출 0.
+글쓴이의 last_assistant_summary 강제 푸시도 이 패턴에선 무력 — 푸시할 텍스트 자체가 빈 문자열.
 
-증상:
-- Claude가 AskUserQuestion 호출 → SDK가 stdin 막힘 자동 감지 → 빈 응답 자동 생성 → 사용자에게 옵션 화면 노출 X
-- 본 active 라벨 turn에서 빈 응답 도착한 진짜 원인. 사용자 의도 X, 시스템 한계.
+A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 
-영향:
-- glunsiz 글쓴이 Stop Hook은 AskUserQuestion → 텔레그램 force_reply → 답변 받기 흐름이 핵심 가치 중 하나. 우리 봇엔 이 통로 부재
-- 5번 silent와 SDK 신호 동일 (`stop_reason: "tool_use"`) → silent_detector가 잘못 처리하면 노이즈 발생
+처리 시점: P1 silent_detector와 동시에 AskUserQuestion forwarding 모듈 신설.
 
-처리 시점: **P1에 신규 작업 1건 추가**
-- `src/captain_hook/ask_user_handler.py` 신설
-- stream_parser가 `tool_use(name=AskUserQuestion)` 감지 시 라우팅
-- input.questions[].options 파싱 → 텔레그램 inline keyboard 또는 force_reply 송신
-- 사용자 응답 → SDK stdin 주입 (또는 Hook bridge 패턴 차용)
-- 글쓴이 sample2 reply_to_message 매칭 패턴 재활용 가능
+검출 신호 (SCHEMA.md 2번):
+- 마지막 assistant 메시지 content[]에 `type=="tool_use"` + `name=="AskUserQuestion"`
+- 그 직후 result.stop_reason=="end_turn"
+- assistant text 응답 길이 0 또는 자동생성 빈 문자열 마커
 
-P1 로드맵 업데이트 필요.
+푸시 페이로드: tool_use.input.question + options 배열 → 텔레그램 inline keyboard 또는 텍스트 fallback.
 
 ## 10개 위험 — 우선순위
 
@@ -114,3 +109,22 @@ P1 로드맵 업데이트 필요.
 | 8 | 덤프 민감 정보 | P0 .gitignore (즉시) |
 | 9 | 메타 누락 (자체 침묵) | P5 heartbeat |
 | 10 | 봇 AskUserQuestion 처리 0 | P1 ask_user_handler 신설 |
+| 11 | self-noise: 분석 도구 overwrite | P1 v2 any-pattern + path 필터 |
+
+## R11 — Self-noise overwrite (P1 v1 결함, 2026-04-26 라이브 검증 결과)
+
+**증상**: P1 v1 (마지막 값 단순 보존) 라이브 검증 4건 중 2건 실패
+- TOOL_ERROR: import error tool_result.is_error=true가 후속 jq 분석 false로 덮임 → NORMAL 오분류
+- SILENT: nohup sleep tool_use stop_reason이 후속 분석 end_turn으로 덮임 → NORMAL 오분류
+
+**원인**: TurnState 마지막 값 의존 + captain 자체 분석 호출이 turn 안 추가 도구로 박힘 (self-noise).
+
+**caller.type 실측 결과**: 모든 도구 호출 `caller.type=="direct"` → 분기 신호 무력 (SCHEMA.md 참조).
+
+**처리 (P1 v2 + v3)**:
+- TurnState 재설계: any-pattern 누적 (any_tool_error / any_ask_user_question / last_meaningful_stop_reason)
+- 첫 실패 도구 보존 (덮어쓰기 X)
+- self-noise path 필터: `captain-hook|/dumps/|_captain_dump_raw|p1_decisions` 박힌 도구는 last_user_* 갱신 X
+- caller.type 1차 보조 검사 (future-proof)
+
+회귀 방지 unit test 3건 추가 (8/9/10), 10/10 통과.

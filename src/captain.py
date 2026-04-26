@@ -45,8 +45,28 @@ class TurnEnd(Enum):
 # ============================================================
 # State (any-pattern)
 # ============================================================
-# Self-noise: captain-hook 자체 분석 호출 식별. caller.type 또는 경로 패턴
+# Self-noise: captain-hook 자체 분석 호출 식별
+# 2026-04-26 caller.type 실측: 모든 tool_use가 "direct" → caller로 구분 불가
+# → path 필터 단독 채택. caller 검사는 future-proof로 보조 유지.
 _SELF_NOISE_PATTERN = re.compile(r"captain-hook|/dumps/|_captain_dump_raw|p1_decisions")
+
+
+def _is_user_intent_tool(block: dict) -> bool:
+    """도구 호출이 사용자 의도인지 (self-noise가 아닌지) 판정.
+
+    1차: caller.type 검사 (현재 모두 "direct"라 무력, future-proof)
+    2차: input 안 self-noise 경로 필터 (메인 신호)
+    """
+    # 1차 — caller 신호 (SDK가 분리 분류 시작하면 활용)
+    caller = block.get("caller") or {}
+    ct = caller.get("type")
+    if ct and ct != "direct":
+        return False
+    # 2차 — input path 필터
+    input_str = json.dumps(block.get("input") or {}, ensure_ascii=False, default=str)
+    if _SELF_NOISE_PATTERN.search(input_str):
+        return False
+    return True
 
 
 @dataclass
@@ -100,10 +120,8 @@ class TurnState:
                         if name == "AskUserQuestion":
                             self.any_ask_user_question = True
                             self.ask_user_input = binput
-                        # self-noise 필터: 도구 input에 captain-hook 경로 박혔으면
-                        # last_user_* 갱신 X (분석 호출은 사용자 의도 X)
-                        input_str = json.dumps(binput, ensure_ascii=False, default=str)
-                        if not _SELF_NOISE_PATTERN.search(input_str):
+                        # self-noise 필터: caller + path 통합 (위 _is_user_intent_tool)
+                        if _is_user_intent_tool(block):
                             self.last_user_tool_name = name
                             self.last_user_tool_input = binput
                     elif btype == "text":

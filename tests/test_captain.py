@@ -228,6 +228,72 @@ def main() -> int:
         print("       [FAIL] silent guard didn't skip")
         fails += 1
 
+    # 8) TOOL_ERROR 누적 — 의도 도구 실패 + 후속 분석 도구 정상 → TOOL_ERROR
+    ok, _, _, silent, _ = run_branch(
+        "8) TOOL_ERROR 누적 (실측 회귀)",
+        [
+            fx_assistant_tool_use("Bash", {"command": "python -c 'import nx'"}),
+            fx_user_tool_result("Exit code 1\nModuleNotFoundError", is_error=True),
+            # 후속 분석 도구 (captain-hook 경로 박힘 → self-noise)
+            fx_assistant_tool_use("Bash", {"command": "tail -3 ~/Projects/claude-captain-hook/dumps/x.jsonl"}),
+            fx_user_tool_result("ok", is_error=False),
+            fx_message_delta("end_turn"),
+            fx_result("end_turn"),
+        ],
+        TurnEnd.TURN_END_TOOL_ERROR,
+    )
+    if not ok:
+        fails += 1
+    if not silent or "도구 실패" not in silent.get("text", ""):
+        print("       [FAIL] cumulative tool_error didn't survive overwrite")
+        fails += 1
+
+    # 9) ASK_USER 보존 — AskUserQuestion + 후속 분석 → ASK_USER
+    ok, _, _, _, auq = run_branch(
+        "9) ASK_USER 보존 (실측 회귀)",
+        [
+            fx_assistant_tool_use("AskUserQuestion", {
+                "questions": [{"question": "X?", "header": "Pick",
+                    "options": [{"label": "A", "description": "a"}, {"label": "B", "description": "b"}]}]}),
+            # 후속 self-noise 분석
+            fx_assistant_tool_use("Bash", {"command": "jq -c '.raw' ~/Projects/claude-captain-hook/dumps/x.jsonl"}),
+            fx_user_tool_result("ok"),
+            fx_message_delta("end_turn"),
+            fx_result("end_turn"),
+        ],
+        TurnEnd.TURN_END_ASK_USER,
+    )
+    if not ok:
+        fails += 1
+    if not auq:
+        print("       [FAIL] ask_user didn't survive overwrite")
+        fails += 1
+
+    # 10) SILENT direct 필터 — nohup sleep + 후속 분석 (self-noise) → SILENT
+    ok, _, _, silent, _ = run_branch(
+        "10) SILENT direct 필터 (실측 회귀)",
+        [
+            fx_assistant_tool_use("Bash", {"command": "nohup sleep 60 &", "run_in_background": True}),
+            fx_message_delta("tool_use"),
+            # 후속 self-noise 분석 — last_meaningful_stop_reason은 tool_use 유지되어야
+            fx_assistant_tool_use("Bash", {"command": "tail -1 ~/Projects/claude-captain-hook/dumps/p1_decisions.jsonl"}),
+            fx_user_tool_result("ok"),
+            fx_message_delta("end_turn"),
+            fx_result("end_turn"),
+        ],
+        TurnEnd.TURN_END_SILENT,
+    )
+    if not ok:
+        fails += 1
+    if not silent or "조용한 종료" not in silent.get("text", ""):
+        print("       [FAIL] silent payload missing")
+        fails += 1
+    # last_user_tool은 self-noise 필터로 nohup sleep이어야 (jq 분석 X)
+    # silent 텍스트에서 확인
+    if silent and "nohup sleep" not in silent.get("text", ""):
+        print(f"       [FAIL] last_user_tool was overwritten: {silent.get('text','')[:100]}")
+        fails += 1
+
     # 7) Fail-safe — None 입력
     state = TurnState()
     state.update(None)  # should not raise
