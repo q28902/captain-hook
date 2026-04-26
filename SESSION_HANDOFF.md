@@ -93,6 +93,21 @@ P0 진척도 70% (🟢 4 / 🟡 3 / 🔴 1).
 2. silent_detector + 분기 휴리스틱 (마지막 tool_use.name 검사)
 3. AskUserQuestion forwarding 모듈 (R10 대응, 봇 polling 1x 작업량)
 
+### 🟢 P1 1차 완료 (2026-04-26)
+
+- **`src/captain.py`** (300줄, 단일 파일 응집): TurnEnd enum 6종 + TurnState dataclass + classify + silent_detector_decide + ask_user_forwarding_decide + log_decision
+- **`tests/test_captain.py`**: 7분기 모두 통과 (NORMAL, SILENT, ASK_USER, TOOL_ERROR, API_ERROR, SILENT skip guard, fail-safe None)
+- **`INTEGRATE.md`**: 운영본 통합 가이드 (sdk_integration.py 변경 3곳, orchestrator.py 변경 1곳, 검증 시나리오 4건, 롤백 명령)
+- **분류·결정 로직만 보유, 의존성 0** — 텔레그램 송신은 봇이 stream_callback으로 받아 처리
+
+### 다음 세션 진입 즉시 작업
+1. INTEGRATE.md §3 — orchestrator.py 패치 작성 (work/orchestrator.py)
+2. orchestrator unit test (mock StreamUpdate)
+3. 운영본 교체 + 봇 재시작 (INTEGRATE.md §5)
+4. 검증 시나리오 4건 호출 (INTEGRATE.md §4)
+5. p0_check.sh 갱신 (p1_decisions.jsonl 카운트 추가) — 선택
+6. 결과 보고 + SESSION_HANDOFF 갱신
+
 봇 polling 메커니즘 grep 확인: `bot/core.py`, `bot/orchestrator.py`, `bot/handlers/message.py`, `events/types.py` 매칭. python-telegram-bot 라이브러리 사용. → forwarding 1x.
 
 ### 코드 위치 약속
