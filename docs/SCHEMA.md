@@ -32,8 +32,8 @@
 | # | 글쓴이 분류 | SDK 신호 | 등급 |
 |---|---|---|---|
 | 1 | 명시적 완료 | `stop_reason: "end_turn"` + `terminal_reason: "completed"` | 🟡 (6번과 구분 미확인) |
-| 2 | AskUserQuestion | tool_use 직후 종료, tool name 검사 | 🔴 미관찰 |
-| 3 | 정보 후 대기 | 1번과 동일 추정 | 🔴 미관찰 |
+| 2 | AskUserQuestion | message_delta `stop_reason: "tool_use"` + 마지막 `tool_use.name == "AskUserQuestion"` (5번과 신호 동일, name으로 분기) | 🟢 |
+| 3 | 정보 후 대기 | 2번과 동일 추정 (text + AskUserQuestion 동시 가능). SDK 레벨 신호로는 2번에 흡수 | 🟡 |
 | 4 | 에러/블로커 (도구 실패) | `user.message.content[].is_error: true` | 🟢 |
 | 4' | 에러/블로커 (API 자체 실패) | `result.is_error: true` 또는 `api_error_status != null` | 🟡 미관찰 |
 | 5 | 도구 사용 후 응답 대기 | `stop_reason: "tool_use"` (직접!) | 🟢 100% |
@@ -73,6 +73,48 @@
 
 ### 빈도
 PING-PONG 1쌍 + 분석 2 turn = 5건. turn당 평균 ~1.5건 push (정확한 발생 조건 미상 — turn 시작 시점일 가능성 높음).
+
+## AskUserQuestion 페이로드 (🟢 분석 완료, 2026-04-26 active 라벨)
+
+### tool_use 호출 (assistant 메시지)
+```json
+{
+  "type": "tool_use",
+  "id": "toolu_...",
+  "name": "AskUserQuestion",
+  "input": {
+    "questions": [{
+      "question": "...",
+      "header": "...",
+      "multiSelect": false,
+      "options": [{"label": "...", "description": "..."}, ...]
+    }]
+  }
+}
+```
+
+### turn 시퀀스
+1. assistant: tool_use(name=AskUserQuestion) → message_delta `stop_reason: "tool_use"`
+2. user: tool_result string `"User has answered your questions: <answer>. You can now continue with the user's answers in mind."`
+3. assistant: 후속 응답 → message_delta `stop_reason: "end_turn"`
+4. result: `stop_reason: "end_turn"`, `terminal_reason: "completed"`, `is_error: false`
+
+### 5번 silent와 분기 휴리스틱
+| 시점 신호 | 5번 silent | 2번 AskUserQuestion |
+|---|---|---|
+| message_delta.stop_reason | tool_use | tool_use |
+| 마지막 tool_use.name | 임의 도구 | "AskUserQuestion" |
+| 후속 user 메시지 | (없음 — turn 종료) | tool_result string 도착 |
+| 최종 result.stop_reason | (없음 — 봇이 turn 종료 처리 안 함) | end_turn (답변 받고 정상 종료) |
+
+→ **P1 silent_detector 분기 필수**: 마지막 tool_use.name 검사 → AskUserQuestion이면 silent 푸시 skip (별도 처리), 그 외면 silent 푸시.
+
+### ⚠️ 봇 본체에 AskUserQuestion 처리 로직 0
+`grep -rn "AskUserQuestion\|ask_user\|permission_prompt" /Volumes/AIDRIVE/claude-code-telegram/src/` → 0건.
+
+→ SDK가 stdin 막혔을 때 자동 빈 응답 생성. **사용자에게 옵션 화면 노출 X**. 본 active 라벨 turn에서 빈 응답 도착한 진짜 원인.
+
+→ RISKS.md R10 박제, P1에 양방향 처리 작업 추가.
 
 ## tool_result 페이로드 (🟢 분석 완료, 2026-04-26 active 라벨)
 
@@ -126,6 +168,6 @@ P0_DUMP.md §매핑검증과 동기화:
 | Agent bg | ≥10 | 0 |
 | Silent turn | ≥5 | 미카운트 (stop_reason=tool_use 기반 측정 필요) |
 | 정상 페어 | ≥100 | 카운트 가능 |
-| 6가지 turn-end | 각 ≥1 | 1번 부분 / 4번 도구실패 ✅ / 5번 ✅ / 2,3,4',6번 미관찰 |
+| 6가지 turn-end | 각 ≥1 | 1번 부분 / 2번 ✅ / 3번 (2번 흡수) / 4번 도구실패 ✅ / 5번 ✅ / 4',6번 미관찰 |
 
 매일 `scripts/p0_check.sh` 실행 → 임계 자동 판정.

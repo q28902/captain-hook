@@ -34,12 +34,18 @@
   - turn 종료 시 텍스트 응답 0건 감지
   - 마지막 도구 호출 요약을 텔레그램에 강제 푸시
 
-#### silent_detector 필수 조건 (글쓴이 가드 흡수)
+#### silent_detector 필수 조건 (글쓴이 가드 흡수 + AskUserQuestion 분기)
 
 - turn 종료 시 텍스트 응답 0건 → 마지막 도구 + 결과 요약 강제 푸시
 - 단, 같은 turn 안에서 텔레그램 응답이 이미 1건 이상 송신됐으면 skip (중복 방지)
 - 글쓴이 Stop Hook `has_telegram_send_in_turn()` 가드와 동등 기능
 - 미구현 시 정상 turn마다 알림 2건 → 노이즈 폭발 → 시스템 자체 신뢰도 붕괴
+
+##### AskUserQuestion 분기 (2026-04-26 P0 active 라벨 결과)
+SCHEMA.md 분석에 따르면 2번(AskUserQuestion)과 5번(silent)은 SDK 신호(`stop_reason: "tool_use"`)가 동일.
+- 마지막 tool_use.name이 `"AskUserQuestion"` → silent_detector 푸시 skip → **별도 양방향 처리 모듈로 라우팅**
+- 그 외 tool name → 일반 silent 푸시
+- 봇 본체에 AskUserQuestion 처리 로직 0 (RISKS.md R10) → P1에 양방향 처리 작업 신설 필요
 
 ### 감지 패턴 — wrapper 인터셉트 방식 (Claude 의존 0)
 

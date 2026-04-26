@@ -68,10 +68,16 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 - SCHEMA.md / P0_DUMP.md / scripts/p0_check.sh 동기화
 
 ### 다음 active 라벨 (남은 우선순위)
-1. **AskUserQuestion 호출 (2번)** — Aki 텔레그램에서 의도 호출 → tool_use 직후 stop_reason / 후속 시퀀스 매핑
+1. ~~**AskUserQuestion 호출 (2번)**~~ — 2026-04-26 완료
+   - 신호: `stop_reason: "tool_use"` + 마지막 tool_use.name == "AskUserQuestion" (5번과 분기 휴리스틱 박제)
+   - **R10 발견**: 봇 본체에 AskUserQuestion 처리 0 → P1에 ask_user_handler 신설 추가
+   - 3번 (정보 후 대기)는 2번에 흡수 가설 (🟡)
 2. **1번 vs 6번 구분** — 도구 0개 turn vs 도구만 사용 turn 비교
 3. **bg 도구 (B/C 패턴)** — passive 누적 또는 의도 호출
 4. **API level 4' 패턴** — `result.is_error: true` (rate limit 도래 등 매우 드묾, passive 대기)
+
+### A안/B안 결정 미완료
+세열님 응답이 빈 string ("User has answered: ."). 빈 응답 진짜 원인이 R10 (봇 처리 부재)임이 밝혀짐. 다음 turn에 텍스트로 직접 결정 받으면 진행.
 
 ### 코드 위치 약속
 
