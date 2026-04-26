@@ -125,8 +125,13 @@ A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 - 봇 본체가 시스템 프롬프트에 키 평문 박음 (환경변수 미사용 또는 fallback)
 - captain redaction이 키 종류 전수 커버 못함
 
+위험도 재평가 (2026-04-27 세열 결정):
+- 노출 채널 = **본인 개인 텔레그램만**. 외부 공개 0, git public 0
+- 외부 유출 가능성 매우 낮음 → **키 rotate 불필요**
+- 향후 노출 차단 (redact 패턴 + 본체 환경변수 이전)에 집중
+
 처리:
-1. **키 5종 즉시 회수·rotate** (운영 영향)
+1. ~~키 5종 즉시 회수·rotate~~ — 위험도 재평가 후 취소
 2. **봇 본체에서 시스템 프롬프트 → 환경변수 이전** (captain-hook 범위 외, 별도 작업)
 3. **captain-hook redaction 패턴 추가** (work/sdk_integration.py `_CAPTAIN_REDACT_PATTERNS`):
    - `sk-or-v1-[a-f0-9]{64}` (OpenRouter)
