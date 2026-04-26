@@ -133,7 +133,8 @@ echo "=== 임계 도달 여부 ==="
 | 1 | 명시적 완료 | `stop_reason: "end_turn"` + `terminal_reason: "completed"` | 🟡 |
 | 2 | AskUserQuestion | tool_use 직후 종료 + tool name 검사 | 🔴 |
 | 3 | 정보 제공 후 대기 | 1번과 동일 추정 | 🔴 |
-| 4 | 에러/블로커 | `is_error: true` 또는 `api_error_status != null` | 🔴 |
+| 4 | 에러/블로커 (도구 실패) | `user.message.content[].is_error: true` (tool_result 블록 level) | 🟢 |
+| 4' | 에러/블로커 (API 자체 실패) | `result.is_error: true` (turn level) | 🟡 미관찰 |
 | 5 | 도구 사용 후 응답 대기 | `stop_reason: "tool_use"` (직접!) | 🟢 |
 | 6 | Idle | 1번과 동일한 end_turn? 구분 미확인 | 🔴 |
 

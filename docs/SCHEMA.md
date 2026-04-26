@@ -23,7 +23,9 @@
 | `stream_event.event.message_stop` | (event type 자체) | 메시지 종료 신호 | 🟢 |
 | `result.stop_reason` | "end_turn" 등 | turn final | 🟢 |
 | `result.terminal_reason` | "completed" | 한 단계 위 | 🟢 |
-| `result.is_error` / `result.api_error_status` | false / null | 에러 분기 | 🟡 (true 케이스 미관찰) |
+| `result.is_error` / `result.api_error_status` | false / null | **API/turn level** 에러 분기 | 🟡 (true 케이스 미관찰) |
+| `user.message.content[].is_error` | true / false | **tool_result 블록 level** — 도구 실행 실패 | 🟢 |
+| `user.tool_use_result` | dict (정상) / string (에러) | 구조 차이로도 분기 가능 | 🟢 |
 
 ## 6분류 매핑 — confidence 등급
 
@@ -32,7 +34,8 @@
 | 1 | 명시적 완료 | `stop_reason: "end_turn"` + `terminal_reason: "completed"` | 🟡 (6번과 구분 미확인) |
 | 2 | AskUserQuestion | tool_use 직후 종료, tool name 검사 | 🔴 미관찰 |
 | 3 | 정보 후 대기 | 1번과 동일 추정 | 🔴 미관찰 |
-| 4 | 에러/블로커 | `is_error: true` 또는 `api_error_status != null` | 🔴 미관찰 |
+| 4 | 에러/블로커 (도구 실패) | `user.message.content[].is_error: true` | 🟢 |
+| 4' | 에러/블로커 (API 자체 실패) | `result.is_error: true` 또는 `api_error_status != null` | 🟡 미관찰 |
 | 5 | 도구 사용 후 응답 대기 | `stop_reason: "tool_use"` (직접!) | 🟢 100% |
 | 6 | Idle | 1번과 동일한 end_turn? | 🔴 미관찰 |
 
@@ -71,6 +74,24 @@
 ### 빈도
 PING-PONG 1쌍 + 분석 2 turn = 5건. turn당 평균 ~1.5건 push (정확한 발생 조건 미상 — turn 시작 시점일 가능성 높음).
 
+## tool_result 페이로드 (🟢 분석 완료, 2026-04-26 active 라벨)
+
+도구 실행 결과는 `type: "user"` 메시지의 `content[].type: "tool_result"` 블록으로 들어옴. 실패 시 `is_error: true` + `content`에 stderr 포함.
+
+### 정상 vs 에러 비교
+
+| 필드 | 정상 (예: Edit 성공) | 에러 (예: import 실패) |
+|---|---|---|
+| `content[].is_error` | false (생략 가능) | **true** |
+| `content[].content` | 결과 문자열 ("...updated successfully") | "Exit code N\nTraceback..." |
+| `raw.tool_use_result` | dict `{stdout, stderr, interrupted, isImage, noOutputExpected}` | string `"Error: Exit code N\n..."` |
+
+### D 패턴(백그라운드 실패 침묵) 분기 — P1 직결
+
+**bg 작업이 turn 안에서 즉사하는 케이스**: tool_result.is_error 즉시 true로 박힘. P1 stream_parser가 이걸 감지하면 별도 cct-notifier 등록 없이도 즉시 ⚠️ 실패 알림 송신 가능.
+
+**bg 작업이 turn 종료 후 죽는 케이스**: tool_result는 PID만 반환하고 끝남. 이후 cct-notifier polling에서 exit_code 확인 → wrapper의 `.exit` 파일로 ✅/⚠️ 분기 (DESIGN.md 감지 패턴 참조).
+
 ## Self-observation noise — dump-of-dump 현상
 
 봇 자체가 captain-hook P0 분석을 위해 호출하는 Bash 명령(p0_check.sh, jq 분석 등)도 그대로 dump됨. **P0가 자기 자신을 보고 있음**.
@@ -105,6 +126,6 @@ P0_DUMP.md §매핑검증과 동기화:
 | Agent bg | ≥10 | 0 |
 | Silent turn | ≥5 | 미카운트 (stop_reason=tool_use 기반 측정 필요) |
 | 정상 페어 | ≥100 | 카운트 가능 |
-| 6가지 turn-end | 각 ≥1 | 1번 부분 / 5번 ✅ / 나머지 미관찰 |
+| 6가지 turn-end | 각 ≥1 | 1번 부분 / 4번 도구실패 ✅ / 5번 ✅ / 2,3,4',6번 미관찰 |
 
 매일 `scripts/p0_check.sh` 실행 → 임계 자동 판정.

@@ -61,9 +61,17 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 - `scripts/p0_check.sh` 첫 실행 통과. self-noise 필터 작동 확인
 
 ### 다음 active 라벨 1순위
-**`is_error: true` 유도** — `python -c "import nonexistent"` 의도 실패. 4번 에러/블로커 신호 위치·값 확정 → P1 D 패턴 분기 직결.
+**~~`is_error: true` 유도~~ — 2026-04-26 완료**.
+- 위치 확정: `user.message.content[].is_error: true` (tool_result 블록 level)
+- 추가: `tool_use_result` 구조 차이도 분기 신호 (정상 dict / 에러 string)
+- **도구 실패 ≠ turn 실패** 통찰 박제 (D 패턴 직결)
+- SCHEMA.md / P0_DUMP.md / scripts/p0_check.sh 동기화
 
-이후 순서: AskUserQuestion (2번) → 1번 vs 6번 구분 → bg 도구.
+### 다음 active 라벨 (남은 우선순위)
+1. **AskUserQuestion 호출 (2번)** — Aki 텔레그램에서 의도 호출 → tool_use 직후 stop_reason / 후속 시퀀스 매핑
+2. **1번 vs 6번 구분** — 도구 0개 turn vs 도구만 사용 turn 비교
+3. **bg 도구 (B/C 패턴)** — passive 누적 또는 의도 호출
+4. **API level 4' 패턴** — `result.is_error: true` (rate limit 도래 등 매우 드묾, passive 대기)
 
 ### 코드 위치 약속
 

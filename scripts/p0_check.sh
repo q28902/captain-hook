@@ -70,7 +70,10 @@ count_pattern "Task/Agent bg"           "10" \
 count_pattern "AskUserQuestion 호출"    ">=1" \
     'select(.raw.type=="assistant") | .raw.message.content[]? | select(.type=="tool_use" and .name=="AskUserQuestion")'
 
-count_pattern "is_error: true"          ">=1" \
+count_pattern "tool_result is_error"    ">=1" \
+    'select(.raw.type=="user") | .raw.message.content[]? | select(.type=="tool_result" and .is_error==true)'
+
+count_pattern "result.is_error (API)"   ">=1" \
     'select(.raw.type=="result" and .raw.is_error==true)'
 
 count_pattern "rate_limit_event"        ">=1" \
