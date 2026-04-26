@@ -40,6 +40,17 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 ### .gitignore 즉시 추가
 - `dumps/` (P0 stream-json에 민감 정보 포함 가능, 절대 push X)
 
+### ⚠️ P0 종료 조건 박제 (2026-04-26 보강)
+**의도적 라벨 데이터 + passive 캡처가 합쳐서 패턴별 임계 샘플 도달. 시간 아님.**
+
+5종 패턴 임계 (P0_DUMP.md 표):
+- Bash bg ≥ 30, nohup ≥ 10, Agent bg ≥ 10, silent turn ≥ 5, 정상 페어 ≥ 100
+
+추가 작업:
+- 첫날 active 라벨 데이터 5~10건 생성 (P1 fixture 직접 재활용)
+- `scripts/p0_check.sh` jq cookbook commit + 매일 실행 → 임계 자동 판정
+- 로깅 코드는 try/except + redaction 정규식 6종 (sk-/Bearer/AIza/gho/api_key/사용자경로) 박제됨
+
 ### 코드 위치 약속
 
 봇 본체(`/Volumes/AIDRIVE/claude-code-telegram/`)에 새 모듈 추가:
