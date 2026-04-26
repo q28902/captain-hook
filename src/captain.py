@@ -199,7 +199,7 @@ def classify(raw_data: Any, state: TurnState) -> TurnEnd:
 
         return TurnEnd.TURN_PROGRESS
     except Exception as e:
-        print(f"[captain-hook P1] classify failed: {e}", file=sys.stderr)
+        print(f"[captain-hook P1] classify failed: {e}", file=sys.stderr, flush=True)
         return TurnEnd.TURN_PROGRESS
 
 
@@ -223,6 +223,9 @@ def silent_detector_decide(state: TurnState, classification: TurnEnd) -> Optiona
             return None
         if state.text_response_count > 0:
             return None  # 글쓴이 가드
+        # P1.6 self-noise 가드: SILENT인데 사용자 의도 도구 0건이면 = captain 자체 분석 turn → push X
+        if classification == TurnEnd.TURN_END_SILENT and not state.last_user_tool_name:
+            return None
 
         if classification == TurnEnd.TURN_END_TOOL_ERROR:
             tool = state.failed_tool_name or "unknown"

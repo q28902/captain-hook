@@ -37,7 +37,7 @@
 | 4 | 에러/블로커 (도구 실패) | `user.message.content[].is_error: true` | 🟢 |
 | 4' | 에러/블로커 (API 자체 실패) | `result.is_error: true` 또는 `result.terminal_reason == null` | 🟢 (2026-04-26 자연 발생 1건) |
 | 5 | 도구 사용 후 응답 대기 | `stop_reason: "tool_use"` (직접!) | 🟢 100% |
-| 6 | Idle | 1번과 동일한 end_turn? | 🔴 미관찰 |
+| 6 | Idle (1번 흡수) | 1번과 동일 분기 — SDK가 별도 신호로 구분하지 않음 | 🟢 (P1.6 unit test 13번 통과로 확정) |
 
 ### 등급 의미
 - 🟢 **확정** — dump에서 직접 관찰, P1 파서가 휴리스틱 없이 활용 가능

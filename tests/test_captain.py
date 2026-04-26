@@ -294,6 +294,43 @@ def main() -> int:
         print(f"       [FAIL] last_user_tool was overwritten: {silent.get('text','')[:100]}")
         fails += 1
 
+    # 11) P1.6 self-noise 가드: stop_reason=tool_use 누적 + 모든 도구가 noise path
+    ok, _, _, silent, _ = run_branch(
+        "11) P1.6 self-noise 가드",
+        [
+            # 모든 도구가 self-noise path (captain-hook|/dumps/) → last_user_tool_name 갱신 X
+            fx_assistant_tool_use("Bash", {"command": "tail ~/Projects/claude-captain-hook/dumps/x.jsonl"}),
+            fx_message_delta("tool_use"),
+            fx_user_tool_result("ok"),
+            fx_assistant_tool_use("Bash", {"command": "jq '.cls' ~/Projects/claude-captain-hook/dumps/y.jsonl"}),
+            fx_user_tool_result("ok"),
+            fx_message_delta("end_turn"),
+            fx_result("end_turn"),
+        ],
+        TurnEnd.TURN_END_SILENT,
+    )
+    if not ok:
+        fails += 1
+    if silent is not None:
+        print("       [FAIL] P1.6 가드 미작동: silent push 발생 (last_user_tool=null인데 push)")
+        fails += 1
+
+    # 13) Idle (6번) — 도구 0개 + 텍스트 1건 + end_turn → NORMAL (1번과 동일)
+    ok, _, _, silent, _ = run_branch(
+        "13) Idle (6번 = 1번 통합)",
+        [
+            fx_assistant_text("정보 제공만 하고 도구 호출 없이 종료"),
+            fx_message_delta("end_turn"),
+            fx_result("end_turn"),
+        ],
+        TurnEnd.TURN_END_NORMAL,
+    )
+    if not ok:
+        fails += 1
+    if silent is not None:
+        print("       [FAIL] Idle case unexpectedly produced push")
+        fails += 1
+
     # 7) Fail-safe — None 입력
     state = TurnState()
     state.update(None)  # should not raise

@@ -67,7 +67,30 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 - **도구 실패 ≠ turn 실패** 통찰 박제 (D 패턴 직결)
 - SCHEMA.md / P0_DUMP.md / scripts/p0_check.sh 동기화
 
-### 🟢 P1 v3.1 진행 — R12 박제 + 코드 보강 완료 (2026-04-26)
+### 🟢🟢 P1 종료 — v3.2 (P1.6 + R12 통합, 2026-04-27)
+
+**v3 라이브 검증 production 13건 결과**:
+- TOOL_ERROR 100% push (2/2)
+- ASK_USER 100% push (1/1)
+- SILENT 100% push (4/4 — 진짜 SILENT만, P1.6 가드 작동)
+- API_ERROR 0/6 push (운영본 v3 R12 미패치 → v3.2 cp로 100% 해결)
+
+**v3.2 변경**:
+- R12 API_ERROR push 분기 (silent_detector_decide)
+- P1.6 self-noise 가드 (last_user_tool_name=None이면 SILENT push X — false-positive 차단)
+- 디버그 print 4개 제거 (silently fail 진단 오인 정정)
+- import FAILED는 logger.warning 보존 (R14 교훈: silently fail 재발 방지)
+
+**unit test 12/12 통과**:
+1 NORMAL · 2 SILENT · 3 ASK_USER · 4 TOOL_ERROR · 5 API_ERROR(R12) · 6 SILENT skip(글쓴이 가드) · 7 None fail-safe · 8 TOOL_ERROR 누적 · 9 ASK_USER 보존 · 10 SILENT direct 필터 · 11 P1.6 self-noise · 13 Idle(6번=1번 통합)
+
+**남은 작업** (P2 또는 P5):
+- P2 silent 요약 레이어 (Haiku/Flash로 30단어)
+- P3 HTTP /notify 엔드포인트 (인증 포함)
+- P4 middleware PR (upstream divergence 차단)
+- P5 heartbeat 메타 알림 (R9)
+
+### 직전 진행 (보존) — P1 v3.1 박제 (2026-04-26)
 
 **v3 라이브 검증 (운영본 PID 85007 = v3 배포 후 자연 발생)**:
 - production 8건 누적 (NORMAL 6 / ASK_USER 1 / API_ERROR 1)
