@@ -67,6 +67,44 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 - **도구 실패 ≠ turn 실패** 통찰 박제 (D 패턴 직결)
 - SCHEMA.md / P0_DUMP.md / scripts/p0_check.sh 동기화
 
+### 🟢 P1 v3.1 진행 — R12 박제 + 코드 보강 완료 (2026-04-26)
+
+**v3 라이브 검증 (운영본 PID 85007 = v3 배포 후 자연 발생)**:
+- production 8건 누적 (NORMAL 6 / ASK_USER 1 / API_ERROR 1)
+- API_ERROR 1건 자연 발생 — turn 도중 강제 종료 (E 패턴), captain v3는 push 0
+- → R12 박제 + silent_detector_decide에 API_ERROR 분기 추가 (v3.1)
+
+**v3.1 코드·테스트 push 완료** (commit ed59a54):
+- captain.py: API_ERROR push 활성화 (글쓴이 가드 무시)
+- test_captain.py case 5: replies=1 + "비정상 종료" 마커 검증
+- test_orchestrator_patch.py case 5 동일
+- 양쪽 unit test 통과 (10/10, 7/7)
+
+**운영본 미배포** — 다음 세션에서 cp + kill + 재시작 후 라이브 4건 + 5번째(API_ERROR) 검증.
+
+### P1 종료 보류 → P1.5 진입
+
+P1.5 작업 (다음 세션):
+1. cp captain.py v3.1 → 운영본
+2. 봇 재시작 (kill+nohup)
+3. 라이브 5건 검증:
+   - NORMAL / TOOL_ERROR / ASK_USER / SILENT (4건 통과 = P1 진짜 종료)
+   - API_ERROR 의도 유도 1건 (R12 회귀 방지)
+4. 5/5 통과 시 ACTIVE_PROJECTS 갱신 + P1 종료 선언
+
+다음 세션 진입 명령:
+```bash
+TS=$(date +%Y%m%d-%H%M%S)
+cp /Volumes/AIDRIVE/claude-code-telegram/src/captain.py \
+   /Volumes/AIDRIVE/claude-code-telegram/src/captain.py.bak.v3.1.${TS}
+cp /Users/inseyeol/Projects/claude-captain-hook/src/captain.py \
+   /Volumes/AIDRIVE/claude-code-telegram/src/captain.py
+PID=$(ps -ef | grep claude-telegram-bot | grep -v grep | awk '{print $2}' | head -1)
+[ -n "$PID" ] && kill "$PID" && sleep 2
+cd /Volumes/AIDRIVE/claude-code-telegram && \
+    nohup poetry run make run > /tmp/bot.log 2>&1 &
+```
+
 ### 다음 active 라벨 (남은 우선순위)
 1. ~~**AskUserQuestion 호출 (2번)**~~ — 2026-04-26 완료
    - 신호: `stop_reason: "tool_use"` + 마지막 tool_use.name == "AskUserQuestion" (5번과 분기 휴리스틱 박제)

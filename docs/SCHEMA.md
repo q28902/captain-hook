@@ -35,7 +35,7 @@
 | 2 | AskUserQuestion | message_delta `stop_reason: "tool_use"` + 마지막 `tool_use.name == "AskUserQuestion"` (5번과 신호 동일, name으로 분기) | 🟢 |
 | 3 | 정보 후 대기 | 2번과 동일 추정 (text + AskUserQuestion 동시 가능). SDK 레벨 신호로는 2번에 흡수 | 🟡 |
 | 4 | 에러/블로커 (도구 실패) | `user.message.content[].is_error: true` | 🟢 |
-| 4' | 에러/블로커 (API 자체 실패) | `result.is_error: true` 또는 `api_error_status != null` | 🟡 미관찰 |
+| 4' | 에러/블로커 (API 자체 실패) | `result.is_error: true` 또는 `result.terminal_reason == null` | 🟢 (2026-04-26 자연 발생 1건) |
 | 5 | 도구 사용 후 응답 대기 | `stop_reason: "tool_use"` (직접!) | 🟢 100% |
 | 6 | Idle | 1번과 동일한 end_turn? | 🔴 미관찰 |
 
@@ -133,6 +133,25 @@ PING-PONG 1쌍 + 분석 2 turn = 5건. turn당 평균 ~1.5건 push (정확한 �
 **bg 작업이 turn 안에서 즉사하는 케이스**: tool_result.is_error 즉시 true로 박힘. P1 stream_parser가 이걸 감지하면 별도 cct-notifier 등록 없이도 즉시 ⚠️ 실패 알림 송신 가능.
 
 **bg 작업이 turn 종료 후 죽는 케이스**: tool_result는 PID만 반환하고 끝남. 이후 cct-notifier polling에서 exit_code 확인 → wrapper의 `.exit` 파일로 ✅/⚠️ 분기 (DESIGN.md 감지 패턴 참조).
+
+## API_ERROR 페이로드 (🟢 2026-04-26 자연 발생 1건)
+
+자연 발생 트리거: turn 도중 외부 강제 종료 (rate limit, 네트워크 단절, kill, OOM, 시간 초과 등). 1건 실측 (1777203673).
+
+```json
+{
+  "type": "result",
+  "stop_reason": "tool_use",       // tool_use에서 끊김
+  "terminal_reason": null,         // ← 정상 turn "completed"와 결정적 차이
+  "is_error": true,
+  "api_error_status": null,
+  "result": null                   // 응답 본문 부재
+}
+```
+
+판정 휴리스틱: `result.is_error == true` OR `result.terminal_reason == null`.
+
+P1 v3.1 처리: silent_detector_decide에 API_ERROR 분기 추가 — 글쓴이 가드 무시 + "🛑 Claude turn 비정상 종료" 푸시. RISKS.md R12 참조.
 
 ## caller.type 실측 (🟡 분기 신호로 무력)
 

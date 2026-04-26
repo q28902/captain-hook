@@ -23,6 +23,22 @@
 - marker file 패턴(`touch /tmp/<id>.done`)으로 보완 중
 - 동일하게 "marker touch 깜빡 위험"
 
+### E) Turn 외부 강제 종료에 의한 응답 침묵 ⚠️ 2026-04-26 자연 발생 1건
+
+D와 다른 패턴:
+- D: 백그라운드 작업 자체 실패 (turn 종료 *후* 시점)
+- E: turn 자체가 외부 요인으로 강제 종료 (Claude 응답 생성 *전*)
+
+증상:
+- result.is_error: true + result: null + terminal_reason: null
+- 봇 응답 0건 (Claude가 응답 생성 전 끊김)
+- 사용자가 본 마지막 = 마지막 tool_use 호출만, 그 다음 침묵
+- 사용자는 turn이 끝났는지 진행 중인지 모름
+
+트리거 후보: rate limit, 네트워크 단절, OOM, 시간 초과, 외부 kill.
+
+처리: P1 v3.1 captain.silent_detector_decide의 API_ERROR 분기 — 글쓴이 가드 무시 + "🛑 Claude turn 비정상 종료" 강제 푸시. RISKS.md R12 + SCHEMA.md API_ERROR 페이로드 참조.
+
 ### D) 백그라운드 실패의 침묵 ⚠️ 실무 페인포인트 1번
 - 사용자: "harness 돌려둬"
 - Claude: "OK, 백그라운드로 돌립니다 PID 12345" → turn 종료
