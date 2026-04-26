@@ -20,12 +20,13 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 
 ## 다음 세션 즉시 착수 — Phase 0 (P0) ⚠️ P1 아님
 
-**우선순위 재배치 (2026-04-26 세열님 5개 지적 반영)**:
-- P0 신설 (1주일 stream-json 덤프) — P1 진입 전 필수
+**우선순위 재배치 (2026-04-26 세열님 5개 지적 + 보강 박제 반영)**:
+- P0 신설 (stream-json 덤프, 종료기준=샘플충분성) — P1 진입 전 필수
 - P1: 파서 + bg 실패 가시화 (D 패턴 포함, wrapper 인터셉트 방식)
-- P2: silent_detector + 요약 레이어
+- P2: silent_detector + 요약 레이어 (글쓴이 `has_telegram_send_in_turn` 가드 흡수)
 - P3: HTTP /notify (인증 포함)
-- P4: middleware PR + Stop Hook
+- P4: middleware PR + Stop Hook (upstream divergence 차단)
+- **P5**: heartbeat 기반 메타 알림 (R9 대응 — captain-hook 자체 침묵 방지)
 
 자세한 근거: [`docs/RISKS.md`](docs/RISKS.md), [`docs/P0_DUMP.md`](docs/P0_DUMP.md), [`docs/DESIGN.md`](docs/DESIGN.md) 우선순위 섹션.
 

@@ -47,3 +47,29 @@ Captain Hook 1층(stream-json 파서)이 이걸 해결: 백그라운드 작업 *
 ## 결론
 
 sample2 = **참고 자료**. 본체 운영 X. 핵심 패턴(Stop Hook, reply 매칭)만 우리 봇에 흡수. 진짜 알림 누락 문제는 봇 stream-json 파서가 푼다.
+
+## 글쓴이가 풀지 않은 것 — captain-hook이 상위호환인 이유
+
+| 누락 패턴 | 글쓴이 Stop Hook | captain-hook |
+|---|---|---|
+| A) Turn 안 보고 누락 | ✅ last_assistant_summary 강제 푸시 | ✅ silent_detector (P2) |
+| B) Turn 종료 후 bg 완료 | ❌ Stop Hook 시점 안 맞음 | ✅ auto_register + cct-notifier polling (P1) |
+| C) Subagent bg 완료 | ❌ 아예 안 다룸 | ✅ marker wrapper 자동 touch (P1) |
+| D) bg 실패 침묵 | ❌ 아예 안 다룸 | ✅ exit_code 3분기 (P1) |
+
+글쓴이의 "100%"는 응답 누락 100%일 뿐. 백그라운드 누락은 미해결.
+
+## 글쓴이 Bridge daemon = captain-hook 어디로 흡수되는가
+
+| Bridge daemon 역할 | captain-hook 위치 |
+|---|---|
+| HTTP API 서버 (POST /send, GET /poll, GET /health) | 봇 + P3 HTTP /notify |
+| Telegram Long Polling | 봇 본체 (이미) |
+| 세션 관리·타임아웃·매핑 | 봇 본체 (이미) |
+
+→ Bridge daemon 비채택 결정 재확인. 별도 운영 = 중복·자원 낭비.
+
+## 흡수해야 할 글쓴이 디테일 2개
+
+1. **중복 방지 가드** — `if has_telegram_send_in_turn(): skip`. silent_detector 필수 조건 ([DESIGN.md §silent_detector 보강](DESIGN.md) 참조).
+2. **Turn 종료 6가지 상황** — 명시적 완료 / AskUserQuestion / 정보 제공 후 대기 / 에러·블로커 / 도구 사용 후 응답 대기 / Idle. P0 덤프 분석에 매핑 검증 포함 ([P0_DUMP.md §매핑검증](P0_DUMP.md) 참조).

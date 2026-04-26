@@ -66,7 +66,21 @@ P0 stream-json 덤프에 API key·파일 내용·사용자 메시지 포함 가�
 - 분석 후 SCHEMA.md만 commit
 - 분석 끝나면 dumps/ 삭제 또는 외장 보관
 
-## 8개 위험 — 우선순위
+## R9 — captain-hook 자체의 침묵 (메타 누락)
+
+봇 프로세스 죽음 / cct-notifier 죽음 / 디스크 풀 / OOM / 네트워크 단절 시 알림 0.
+
+"100% 보장"은 시스템 boundary 안에서만 성립. 글쓴이도 동일 한계 — 재부팅 시 Bridge daemon 자동구동 누락 사고를 글에서 명시.
+
+**처리 시점: P5 — heartbeat 기반 메타 알림**
+
+- captain-hook 컴포넌트(봇, cct-notifier)가 1분마다 heartbeat 파일 touch
+- 별도 경로(SMS, 보조 봇 토큰, 이메일) 워치독이 N분 heartbeat 미수신 시 "down" 알림
+- 핵심: **메인 봇과 다른 채널이어야 함**. 같은 봇으로 보내면 봇 죽었을 때 그 알림도 무력 (글쓴이 Bridge 단일경로 한계와 동형)
+
+P5는 P1~P4 안정화 후 진입.
+
+## 9개 위험 — 우선순위
 
 | # | 위험 | 처리 시점 |
 |---|---|---|
@@ -77,3 +91,4 @@ P0 stream-json 덤프에 API key·파일 내용·사용자 메시지 포함 가�
 | 5 | HTTP 인증 | P3 |
 | 7 | upstream divergence | P4 PR |
 | 8 | 덤프 민감 정보 | P0 .gitignore (즉시) |
+| 9 | 메타 누락 (자체 침묵) | P5 heartbeat |

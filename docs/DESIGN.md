@@ -34,6 +34,13 @@
   - turn 종료 시 텍스트 응답 0건 감지
   - 마지막 도구 호출 요약을 텔레그램에 강제 푸시
 
+#### silent_detector 필수 조건 (글쓴이 가드 흡수)
+
+- turn 종료 시 텍스트 응답 0건 → 마지막 도구 + 결과 요약 강제 푸시
+- 단, 같은 turn 안에서 텔레그램 응답이 이미 1건 이상 송신됐으면 skip (중복 방지)
+- 글쓴이 Stop Hook `has_telegram_send_in_turn()` 가드와 동등 기능
+- 미구현 시 정상 turn마다 알림 2건 → 노이즈 폭발 → 시스템 자체 신뢰도 붕괴
+
 ### 감지 패턴 — wrapper 인터셉트 방식 (Claude 의존 0)
 
 **원칙**: PID/marker 추출을 출력 파싱·Claude 약속에 의존하지 말고, **봇이 명령 자체를 변형**해서 결정론적으로 추출한다.
@@ -132,6 +139,13 @@
   - 글감: "수단이 다름" 비교표 자체가 이미 PR description으로 사용 가능
 - `hooks/notify_stop.py` 작성 (sample2 차용)
 - `~/.claude/settings.json`에 등록 (CLI 직접 사용 백업)
+
+### Phase 5 — P5: heartbeat 기반 메타 알림 (R9 대응)
+- captain-hook 컴포넌트(봇, cct-notifier)가 1분마다 heartbeat 파일 touch
+- 별도 경로(SMS, 보조 봇 토큰, 이메일) 워치독이 N분 heartbeat 미수신 시 "down" 알림
+- 핵심: **메인 봇과 다른 채널이어야 함**. 같은 봇으로 보내면 봇 죽었을 때 그 알림도 무력 (글쓴이 Bridge 단일경로 한계와 동형)
+- P1~P4 안정화 후 진입
+- 자세한 근거: [`docs/RISKS.md`](RISKS.md) R9
 
 ## 비채택 메모
 

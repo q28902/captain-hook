@@ -62,8 +62,9 @@ except Exception as e:
 | `Agent(run_in_background=true)` tool_use | ≥ 10건 |
 | Silent turn (텍스트 응답 0 또는 도구 결과만) | ≥ 5건 |
 | 정상 tool_use·tool_result 페어 | ≥ 100건 (스키마 일반화용) |
+| Turn 종료 6가지 상황 (글쓴이 분류) | 각 ≥ 1건 (§매핑검증 참조) |
 
-passive 캡처 + active 라벨 데이터 합산. **위 5개 모두 충족** = P1 진입 조건.
+passive 캡처 + active 라벨 데이터 합산. **위 6개 모두 충족** = P1 진입 조건.
 
 ### 3. Active 데이터 생성 (첫날 필수)
 
@@ -122,6 +123,25 @@ echo "=== 임계 도달 여부 ==="
 - PID 추출 가능 위치 (tool_result에 PID가 어떻게 노출되는지)
 - exit_code·stderr 캡처 가능 시점
 - Agent SubAgent 호출 시 marker file 약속이 prompt 어디에 박히는지
+
+## §매핑검증 — turn-end 6가지 상황 (글쓴이 분류 기준)
+
+P0 덤프 분석 시 stream-json에서 다음 6가지가 각각 어떤 이벤트 시퀀스로 구분되는지 식별:
+
+| # | 상황 | stream-json 식별 가설 | active 검증 방법 |
+|---|---|---|---|
+| 1 | 명시적 완료 | message_stop + 텍스트 ≥ 1 | 일반 turn 1건 |
+| 2 | AskUserQuestion | tool_use(name=AskUserQuestion) 직후 종료 | 의도 호출 1건 |
+| 3 | 정보 제공 후 대기 | 1과 동일 추정 | 1과의 차이 검증 |
+| 4 | 에러/블로커 | error 이벤트 + 비정상 종료 | 의도적 빌드 실패 1건 |
+| 5 | 도구 사용 후 응답 대기 | 도구 결과 + 텍스트 0 | silent_detector 핵심 타겟 |
+| 6 | Idle | 1과 동일? 모호 | 별도 종료 신호 있는지 확인 |
+
+- 4번 = D 패턴(실패 침묵)과 겹침 → 분기 매핑 확인 필수
+- 5번 = silent_detector 핵심 타겟 (텍스트 0건 + 도구 결과 ≥ 1)
+- 6번 = Anthropic SDK가 별도 신호로 구분하는지 미상 → P0에서 확정
+
+§종료 조건 표에 6가지 각각 ≥ 1건 도달 조건 포함됨.
 
 ## 다음 단계 (P1 진입 조건)
 
