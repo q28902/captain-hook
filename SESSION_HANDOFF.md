@@ -88,7 +88,30 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 
 **다음 단계**: R13-ext (봇 본체 CLAUDE.md → 환경변수 이전, 시급)
 
-### 🟢🟢🟢 1주일 안정화 완료 + P3 진입 점검 (2026-04-27)
+### 🟢🟢🟢🟢 v1.0 정식 마감 (2026-04-27)
+
+**P3 라이브 검증 4/4 통과**:
+- 정상 curl: HTTP=200, event_id 반환 ✅
+- 인증 없음: HTTP=401 ✅
+- 잘못된 secret: HTTP=401 ✅
+- captain decision log 분리: P3 호출 새 라인 추가 X (a 깔끔) ✅
+
+**진입 점검 발견 (R18/R19 동시 박제)**:
+- R18: ProductionConfig가 .env의 ENABLE_API_SERVER + claude_max_cost_* 강제 override → environments.py 직접 수정으로 해결 (한도 99999.0 + enable_api_server=True)
+- R19: 텔레그램 spoiler 해석 (`||` → 누락) → INTEGRATE §5 if/then/fi 강제
+
+**최종 상태**:
+- 봇 PID 359 (11:28 시작, 단일 인스턴스)
+- API 서버 port 8080 LISTEN
+- features_enabled: api_server 박힘
+- budget reminder $0/$2 → $0/$99999
+
+**다음 회차 후보** (별도):
+- bot.db 평문 잔존 분석 (외부 유출 0이라 보류)
+- 봇 self-restart 트리거 (R12 마찰 해소)
+- captain 분기와 P3 알림 통합 dump 분리
+
+### (이전) 1주일 안정화 완료 + P3 진입 점검 (2026-04-27)
 
 **P3 작업량 1x 확정** — 봇 본체 `src/api/server.py` FastAPI 서버 이미 가동 중. endpoint 추가만 필요.
 

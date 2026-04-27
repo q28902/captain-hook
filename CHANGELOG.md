@@ -1,22 +1,36 @@
 # CHANGELOG
 
-## v0.9-rc (2026-04-27)
+## v1.0 (2026-04-27 정식 마감)
 
-P3 라이브 검증 통과 후 v1.0 정식 마감.
-
-핵심 미션 4건 작동:
+핵심 미션 4건 모두 라이브 검증 통과:
 
 1. **봇 내부 누락 검출** — P0/P1 (SILENT/TOOL_ERROR/ASK_USER/API_ERROR 분기) ✅
 2. **글쓴이 미해결 영역 보장** — R12/R10/false-positive 가드 ✅
-3. **외부 시스템 → captain 채널** — P3 코드 + unit test 5/5 ⚠️ (라이브 미검증)
-4. **진단 인프라** — R10~R17 누적 박제 + INTEGRATE.md 표준 가이드 ✅
+3. **외부 시스템 → captain 채널** — P3 라이브 통과 ✅
+4. **진단 인프라** — R10~R19 누적 박제 + INTEGRATE.md 표준 가이드 ✅
 
-### v1.0 마감 조건 (P3 라이브 검증 4건)
+### P3 라이브 검증 결과 (2026-04-27)
 
-- ENABLE_API_SERVER 통과
-- API 포트 확정 + curl 정상 호출
-- 텔레그램 📡 prefix 도착
-- captain decision log 분리 (또는 R17 보강)
+| 검증 | 결과 |
+|---|---|
+| 정상 curl (Bearer) | HTTP=200, `{"ok":true,"event_id":"..."}` ✅ |
+| 인증 없음 | HTTP=401 `invalid auth` ✅ |
+| 잘못된 secret | HTTP=401 `invalid auth` ✅ |
+| captain decision log 분리 | P3 호출 새 라인 추가 X (a 깔끔) ✅ |
+
+봇 NotificationService에 `AgentResponseEvent` publish 정상. 텔레그램 송신 흐름 작동.
+
+### 진입 점검 회차 발견 — R18/R19 동시 박제
+
+- R18: 봇 ProductionConfig가 .env의 ENABLE_API_SERVER + claude_max_cost_* 강제 override → environments.py 직접 수정으로 해결
+- R19: 텔레그램이 가이드 명령의 `||` 를 spoiler로 해석 → INTEGRATE §5 if/then/fi 강제
+
+### 한도 해제 (2026-04-27)
+
+ProductionConfig 한도 99999.0 적용:
+- `claude_max_cost_per_user`: 5.0 → 99999.0
+- `claude_max_cost_per_request`: 2.0 → 99999.0
+- 봇 reminder budget 표시: $0/$2 → $0/$99999
 
 ### 글쓴이 Stop Hook 대비 가치
 
