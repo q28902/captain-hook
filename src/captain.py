@@ -267,8 +267,10 @@ def ask_user_forwarding_decide(state: TurnState, classification: TurnEnd) -> Opt
         q = questions[0]
         question_text = q.get("question") or "(질문 없음)"
         options = q.get("options") or []
+        # P1.7-ext (R15): Markdown 강조 포기 — plain text로 ✓ 100% push 보장
+        # 옵션 description에 unescaped *, _ 들어가면 entity 미종료 BadRequest 유발
         opts_text = "\n".join(
-            f"{i+1}. *{o.get('label','?')}* — {o.get('description','')}"
+            f"{i+1}. {o.get('label','?')}: {o.get('description','')}"
             for i, o in enumerate(options)
         )
         text = f"❓ {question_text}\n\n{opts_text}\n\n번호 또는 자유 텍스트로 답해주세요."
