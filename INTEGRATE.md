@@ -137,35 +137,52 @@ async def _on_stream(update_obj: StreamUpdate) -> None:
 
 각 케이스마다 `~/Projects/claude-captain-hook/dumps/<date>.p1_decisions.jsonl` 라인 추가 확인.
 
-## 5. 봇 재시작 (PID 자동 추출)
+## 5. 봇 재시작 (R16 + R14-후속 반영)
 
-§1에서 백업·cp는 이미 끝낸 상태 가정. 여기는 봇 종료 + 재시작만.
+§1에서 백업·cp는 이미 끝낸 상태 가정. 여기는 모든 봇 종료 + 단일 인스턴스 재시작 + 헬스체크.
 
 ```bash
-# 5a. 현재 PID 자동 추출 + 종료 (하드코딩 X)
-PID=$(ps -ef | grep claude-telegram-bot | grep -v grep | awk '{print $2}' | head -1)
-if [ -z "$PID" ]; then
-    echo "ERROR: bot PID not found — is bot running?"
-else
-    echo "killing PID=$PID"
-    kill "$PID"
-    sleep 2
-    # 안 죽었으면 SIGKILL
-    kill -0 "$PID" 2>/dev/null && kill -9 "$PID"
+# 5a. 모든 봇 인스턴스 kill (R16 — head -1 금지)
+pkill -f claude-telegram-bot
+sleep 5
+
+# 잔존 0건 검증
+COUNT_BEFORE=$(ps -ef | grep claude-telegram-bot | grep -v grep | wc -l | tr -d ' ')
+if [ "$COUNT_BEFORE" -ne 0 ]; then
+    echo "ALARM: $COUNT_BEFORE residual bots — manual kill 필요"
+    ps -ef | grep claude-telegram-bot | grep -v grep
+    exit 1
 fi
 
-# 5b. 재시작 (nohup + 로그 명시)
+# 5b. 단일 인스턴스 시작 (nohup + 로그 명시)
 cd /Volumes/AIDRIVE/claude-code-telegram && \
     nohup poetry run make run > /tmp/bot.log 2>&1 &
-NEW_PID=$!
-echo "new PID: $NEW_PID"
-
-# 5c. 헬스체크 (30초 대기 → ERROR 검색 + 프로세스 살아있는지)
 sleep 30
-echo "--- bot.log ERROR/exception/traceback ---"
-tail -100 /tmp/bot.log | grep -iE "error|exception|traceback" | head -10
-echo "--- process check ---"
-ps -ef | grep claude-telegram-bot | grep -v grep | head -1
+
+# 5c. 단일 인스턴스 검증
+COUNT_AFTER=$(ps -ef | grep claude-telegram-bot | grep -v grep | wc -l | tr -d ' ')
+if [ "$COUNT_AFTER" -ne 1 ]; then
+    echo "ALARM: $COUNT_AFTER instances running (expected 1)"
+    exit 1
+fi
+
+# 5d. Conflict 0건 검증 (R16)
+CONFLICT=$(grep -c "Conflict" /tmp/bot.log 2>/dev/null || echo 0)
+if [ "$CONFLICT" -ne 0 ]; then
+    echo "ALARM: Conflict errors detected"
+    grep "Conflict" /tmp/bot.log | head -3
+    exit 1
+fi
+
+echo "Bot single instance verified: PID $(pgrep -f claude-telegram-bot)"
+
+# 5e. 헬스체크 — 진짜 로그 위치 (R14-후속)
+echo "=== /tmp/bot.log (nohup wrapper) ==="
+tail -50 /tmp/bot.log | grep -iE "error|exception|traceback" | head -10
+echo "=== /private/tmp/claude-telegram-bot.log (봇 stdout, structlog) ==="
+tail -100 /private/tmp/claude-telegram-bot.log | grep -iE "error|exception|traceback|captain" | head -20
+echo "=== /private/tmp/claude-telegram-bot.err (봇 stderr, captain print) ==="
+tail -30 /private/tmp/claude-telegram-bot.err
 ```
 
 ## 6. 롤백

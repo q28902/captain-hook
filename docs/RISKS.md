@@ -113,7 +113,39 @@ A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 | 12 | API_ERROR push 누락 | P1 v3.1 silent_detector_decide 분기 추가 |
 | 13 | 봇 시스템 프롬프트 평문 키 노출 | redact 패턴 5종 추가 + 봇 본체 환경변수 이전 |
 | 14 | dumps 파일 날짜 분기 진단 실수 | 항상 ls -lt로 최근 파일 확인 |
-| 15 | ASK_USER push 텔레그램 미도착 (코드 대칭인데 비대칭 동작) | P1.7 stderr print + plain fallback |
+| 15 | ASK_USER push 텔레그램 미도착 (코드 대칭인데 비대칭 동작) | P1.7 stderr print + plain fallback + P1.7-ext plain text |
+| 16 | 봇 다중 인스턴스 동시 가동 (Conflict 사고) | INTEGRATE.md §5 pkill + 인스턴스 검증 |
+
+## R16 — 봇 다중 인스턴스 동시 가동 (2026-04-27 P1.7 cp 사고)
+
+증상:
+- P1.7 cp 후 재시작 시 기존 봇 미kill 상태에서 신규 시작
+- `telegram.error.Conflict: terminated by other getUpdates request` 발생
+- 두 봇이 같은 token으로 polling → 메시지 라우팅 무작위
+- ASK_USER 진단을 흐릴 정도의 노이즈 발생
+
+근본 원인:
+- INTEGRATE.md §5 PID kill 로직: `PID=$(pgrep -f claude-telegram-bot | head -1)`
+- `head -1`만 잡음 → 2개 이상 가동 시 1개만 kill
+- nohup 재시작 시 잔존 봇 살아있음 인지 못 함
+
+처리: INTEGRATE.md §5 `pkill` + 인스턴스 갯수 강제 검증으로 보강.
+
+## R14-후속 — 봇 진짜 stdout/stderr 경로 (2026-04-27 발견)
+
+R14 원본은 "dumps 파일 날짜 분기 진단 실수"였으나, P1.7-ext 진단 중 더 큰 R14 패턴 발견:
+
+봇 stdout/stderr 진짜 경로:
+- `/private/tmp/claude-telegram-bot.log` (stdout, structlog JSON, 39MB+ 누적)
+- `/private/tmp/claude-telegram-bot.err` (stderr, captain print + 외부 라이브러리 오류)
+- `/tmp/bot.log`은 **nohup wrapper만** 담음 (봇 자체 logging 별개)
+
+진단 명령 표준:
+- captain ASK_USER/SILENT print → `cat /private/tmp/claude-telegram-bot.err`
+- 봇 본체 logger.warning/error → `grep ... /private/tmp/claude-telegram-bot.log`
+- /tmp/bot.log은 시작 단계 startup/shutdown 로그만
+
+→ 모든 미래 진단에서 두 경로 동시 grep 표준화 (INTEGRATE.md §5 헬스체크).
 
 ## R15 — ASK_USER push 텔레그램 미도착 (2026-04-27 라이브 검증)
 
