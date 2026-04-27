@@ -259,6 +259,19 @@ captain은 P1.7-ext로 plain 보장이라 Markdown fallback 불필요. 노이즈
 - 푸시 메시지: "🛑 Claude turn 비정상 종료 — API/SDK 에러. 응답 누락 가능. 마지막 도구 호출이 잘렸을 수 있음."
 - unit test 5번 갱신 (replies=1 + 비정상 종료 마커)
 
+### 자연 발생 누적 (2026-04-26 ~ 2026-04-27)
+
+| 시각 | 사고 | captain "🛑" push |
+|---|---|---|
+| 04-26 git commit 강제 종료 | turn 도중 외부 종료 | ✅ |
+| 04-27 R13-ext 작업 중 | Claude turn 비정상 종료 | ✅ |
+| 04-27 API 500 | Anthropic 측 장애 | ✅ |
+| 04-27 진입 점검 중 | API/SDK 에러 | ✅ |
+
+4건 누적. R12 push 분기가 captain-hook 작업에서 가장 자주 trigger되는 신호.
+글쓴이 Stop Hook 방식으론 last_assistant_summary 빈 문자열이라 푸시 거리 자체 0.
+SCHEMA.md 4' 항목 🟢 등급 자연 검증 완료.
+
 ## R11 — Self-noise overwrite (P1 v1 결함, 2026-04-26 라이브 검증 결과)
 
 **증상**: P1 v1 (마지막 값 단순 보존) 라이브 검증 4건 중 2건 실패
