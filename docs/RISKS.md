@@ -131,6 +131,19 @@ A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 
 처리: INTEGRATE.md §5 `pkill` + 인스턴스 갯수 강제 검증으로 보강.
 
+### 2026-04-27 잔존 봇 잔류 시나리오
+
+`pkill -f claude-telegram-bot && sleep 5` 후 1건 잔존 케이스 관찰:
+- 봇이 SIGTERM 받고 graceful shutdown 진행 중 (sleep 60 등 진행 중인 작업 종료 대기)
+- sleep 5 부족 → ALARM 발생 후 `exit 1`로 차단 (운영 안전망 작동)
+
+영향: 0 — 가이드가 ALARM 시 exit 1로 끊고 세열이 sleep 더 주거나 SIGKILL fallback 적용 시 정상 진행.
+
+개선 후보 (낮은 우선순위, 박제만):
+- pkill 후 sleep 5 → 10
+- SIGKILL fallback: `pkill -9 -f claude-telegram-bot` 추가 단계
+- 본 회차 코드 변경 보류
+
 ## R14-후속 — 봇 진짜 stdout/stderr 경로 (2026-04-27 발견)
 
 R14 원본은 "dumps 파일 날짜 분기 진단 실수"였으나, P1.7-ext 진단 중 더 큰 R14 패턴 발견:

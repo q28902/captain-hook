@@ -88,6 +88,18 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 
 **다음 단계**: R13-ext (봇 본체 CLAUDE.md → 환경변수 이전, 시급)
 
+### 🟢🟢🟢 1주일 안정화 완료 + P3 진입 점검 (2026-04-27)
+
+**P3 작업량 1x 확정** — 봇 본체 `src/api/server.py` FastAPI 서버 이미 가동 중. endpoint 추가만 필요.
+
+다음 작업 (별도 회차):
+- P3 endpoint 코드 (FastAPI handler `POST /notify`)
+- 인증 (`X-Captain-Token` shared secret)
+- unit test
+- cp + 라이브 1건 검증
+
+자세한 명세: [`docs/P3_DESIGN.md`](docs/P3_DESIGN.md)
+
 ### 🟢🟢 captain-hook 1주일 안정화 완료 (2026-04-22 ~ 2026-04-27)
 
 **5일 만에 마감** (목표 5/2 → 4/27, 4일 단축).
