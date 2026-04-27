@@ -16,15 +16,15 @@ echo "BACKUP_TS=${TS}"   # 롤백 시 사용
 
 **1b. captain.py 복제 (신규 파일이라 백업 불필요)**
 ```bash
-cp /Users/inseyeol/Projects/claude-captain-hook/src/captain.py \
+cp ~/Projects/claude-captain-hook/src/captain.py \
    /Volumes/AIDRIVE/claude-code-telegram/src/captain.py
 ```
 
 **1c. 패치된 sdk_integration.py / orchestrator.py 복제 (work/ 검증본)**
 ```bash
-cp /Users/inseyeol/Projects/claude-captain-hook/work/sdk_integration.py \
+cp ~/Projects/claude-captain-hook/work/sdk_integration.py \
    /Volumes/AIDRIVE/claude-code-telegram/src/claude/sdk_integration.py
-cp /Users/inseyeol/Projects/claude-captain-hook/work/orchestrator.py \
+cp ~/Projects/claude-captain-hook/work/orchestrator.py \
    /Volumes/AIDRIVE/claude-code-telegram/src/bot/orchestrator.py
 # (orchestrator.py 패치는 다음 세션에서 작성)
 ```

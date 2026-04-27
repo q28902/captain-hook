@@ -21,7 +21,7 @@
 ### payload schema
 ```json
 {
-  "target_chat_id": 2138498623,         // optional, 미지정 시 NOTIFICATION_CHAT_IDS 첫 값
+  "target_chat_id": <YOUR_TELEGRAM_CHAT_ID>,         // optional, 미지정 시 NOTIFICATION_CHAT_IDS 첫 값
   "message_type": "info",                // info | warn | error (이모지 매핑)
   "content": "메시지 본문",
   "parse_mode": "HTML"                   // optional, 기본 plain

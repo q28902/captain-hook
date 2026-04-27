@@ -164,7 +164,7 @@ grep ENABLE_API_SERVER /Volumes/AIDRIVE/claude-code-telegram/.env
 ```bash
 grep -E "ALLOWED_USERS|TELEGRAM_USER_ID" /Volumes/AIDRIVE/claude-code-telegram/.env
 ```
-- `CHAT_ID=2138498623`가 allowed_users에 포함됐는지 확인
+- `CHAT_ID=<YOUR_TELEGRAM_CHAT_ID>`가 allowed_users에 포함됐는지 확인
 - NotificationService가 미허용 chat_id 무시할 수 있음 = silent fail 위험
 
 **4. P3와 captain decision log 분리 검증**
@@ -300,7 +300,7 @@ P1.5 작업 (다음 세션):
 TS=$(date +%Y%m%d-%H%M%S)
 cp /Volumes/AIDRIVE/claude-code-telegram/src/captain.py \
    /Volumes/AIDRIVE/claude-code-telegram/src/captain.py.bak.v3.1.${TS}
-cp /Users/inseyeol/Projects/claude-captain-hook/src/captain.py \
+cp ~/Projects/claude-captain-hook/src/captain.py \
    /Volumes/AIDRIVE/claude-code-telegram/src/captain.py
 PID=$(ps -ef | grep claude-telegram-bot | grep -v grep | awk '{print $2}' | head -1)
 [ -n "$PID" ] && kill "$PID" && sleep 2
