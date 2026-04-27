@@ -143,6 +143,8 @@ async def _on_stream(update_obj: StreamUpdate) -> None:
 
 ```bash
 # 5a. 모든 봇 인스턴스 kill (R16 — head -1 금지)
+# R19 (2026-04-27): || { ... } 패턴은 텔레그램 spoiler로 해석되어 visual 누락 →
+# if/then/fi 문법으로 강제. 가이드 텔레그램 복붙 시 안전.
 pkill -f claude-telegram-bot
 sleep 5
 
@@ -167,7 +169,10 @@ if [ "$COUNT_AFTER" -ne 1 ]; then
 fi
 
 # 5d. Conflict 0건 검증 (R16)
-CONFLICT=$(grep -c "Conflict" /tmp/bot.log 2>/dev/null || echo 0)
+CONFLICT=$(grep -c "Conflict" /tmp/bot.log 2>/dev/null)
+if [ -z "$CONFLICT" ]; then
+    CONFLICT=0
+fi
 if [ "$CONFLICT" -ne 0 ]; then
     echo "ALARM: Conflict errors detected"
     grep "Conflict" /tmp/bot.log | head -3

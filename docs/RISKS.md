@@ -116,6 +116,49 @@ A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 | 15 | ASK_USER push 텔레그램 미도착 (코드 대칭인데 비대칭 동작) | P1.7 stderr print + plain fallback + P1.7-ext plain text |
 | 16 | 봇 다중 인스턴스 동시 가동 (Conflict 사고) | INTEGRATE.md §5 pkill + 인스턴스 검증 |
 | 17 | P3 외부 endpoint 노이즈 + 인증 우회 | shared secret + prefix 분리 + rate limit + 별도 dump |
+| 18 | 봇 ProductionConfig가 .env 강제 override | environments.py 직접 수정 또는 사전 확인 가이드 |
+| 19 | 텔레그램이 가이드 명령의 `\|\|`를 spoiler 마크다운으로 해석 | if/then/fi 문법 사용 + INTEGRATE.md §5 보강 |
+
+## R18 — 봇 ProductionConfig가 .env 강제 override (2026-04-27)
+
+증상:
+- `.env`에 `ENABLE_API_SERVER=true` 박혀있어도 `ProductionConfig.as_dict()`가 False로 강제 (override 사전에 명시 안 됐는데도)
+- `claude_max_cost_per_request`, `claude_max_cost_per_user` 등 다른 키도 동일 패턴
+- 사용자가 `.env`로 제어 가능한 키 vs 불가능한 키 표면에서 분리 안 됨
+- 진단 시 `.env` 박힘 → "정상" 오인 → 실제 동작 불일치 발견까지 시간 손해
+
+근본 원인:
+- 봇 본체 설계: ProductionConfig가 production 시 "안전한 default" 강제
+- Pydantic Settings의 .env 매핑이 일부 키 (ENABLE_API_SERVER 등)에 정상 작동 안 함 — 별도 진단 필요
+- captain-hook 범위 외 결함 (봇 본체 패치 필요)
+
+처리:
+1. 봇 본체 `ProductionConfig` 검증 — 어떤 키가 override되는지 전체 목록화
+2. captain-hook 영향 키 (`ENABLE_API_SERVER`, `claude_max_cost_*`) 변경 시 `environments.py` 직접 수정 또는 ProductionConfig 우회
+3. P3 진입 점검 가이드(`SESSION_HANDOFF`)에 "ProductionConfig override 키 사전 확인" 추가
+
+처리 시점: P3 진입 점검 단계 1번에 추가 (`grep -B 2 -A 30 "class ProductionConfig" environments.py`).
+
+## R19 — 텔레그램이 가이드 명령의 `||`를 spoiler로 해석 (2026-04-27)
+
+증상:
+- zsh 가이드 명령에 `[ ... ] || { ... }` 패턴 사용 시 텔레그램이 `||...||`를 MarkdownV2 spoiler로 해석
+- visual에서 `||` 누락 → 셸 파싱 에러 → 명령 부분 실행 후 `exit`
+- R16 재시작 가이드에서 직접 trigger됨 (사용자가 봇 죽이는 사고)
+
+처리:
+- 본 secretarybot 가이드 문법 변경: `||` → `\n` 분리 또는 `;` 사용
+- 예:
+  - 기존: `[ COUNT -eq 0 ] || { echo "ALARM"; exit 1; }`
+  - 변경:
+    ```bash
+    if [ "$COUNT" -ne 0 ]; then
+        echo "ALARM"
+        exit 1
+    fi
+    ```
+
+처리 시점: 즉시 (다음 가이드 발화 시 적용). INTEGRATE.md §5 가이드도 동일 패턴 → 보강.
 
 ## R17 — P3 외부 endpoint 노이즈 + 인증 우회 (사전 박제, 2026-04-27)
 
