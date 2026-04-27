@@ -88,6 +88,23 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 
 **다음 단계**: R13-ext (봇 본체 CLAUDE.md → 환경변수 이전, 시급)
 
+### 1주일 안정화 진행 (~ 2026-05-02 마감)
+
+진척 (2026-04-27 기준):
+- **R13-ext**:
+  - ✓ /Volumes/AIDRIVE/CLAUDE.md 평문 키 5종 → 환경변수 참조 교체
+  - ✓ memory/2026-03-30.md sanitize (redact 패턴 적용)
+  - 보류 — 가짜 fixture: tests/unit/test_orchestrator.py (sanitize 불필요)
+  - 보류 — 진단 필요: data/bot.db (SQLite binary)
+  - 미완 — 세열 직접: 봇 .env에 키 5종 추가
+- **R15 후속 (P1.7-ext-final)**:
+  - ✓ work/orchestrator.py parse_mode="Markdown" 제거 (plain only)
+  - 미완 — 세열 직접: 운영본 cp + R16 가이드 재시작 + ASK_USER 1건 검증
+
+남은 작업:
+- passive 자연 누적 모니터링: API_ERROR (R12) / 6번 Idle (P0 마지막 🔴)
+- P3 평가 (HTTP /notify 엔드포인트, 외부 시스템 연동)
+
 원본 박제 (참고용 — 31% 가치는 v3 baseline 기준이라 v3.2 적용 후 변동 가능):
 
 **v3 라이브 검증 production 13건 결과**:

@@ -183,6 +183,22 @@ P1.7-ext 적용 후 captain은 plain text만 생성하지만 orchestrator는 여
 - /private/tmp/claude-telegram-bot.log 39MB 누적 속도 감소
 - 진짜 에러 가시성 향상
 
+### R15 후속 처리 완료 (2026-04-27, P1.7-ext-final)
+
+- work/orchestrator.py captain_ask_user 분기 patched: parse_mode="Markdown" 제거, plain only
+- captain은 plain text 보장(P1.7-ext) → Markdown 시도 자체 안 함 → "Markdown FAILED" 로그 누적 차단
+- 운영본 cp + 봇 재시작 후 stderr "[captain ASK_USER] plain OK"만 보여야 정상
+
+### 2026-04-27 R15 후속 처리 완료 (P1.7-ext-final)
+work/orchestrator.py captain_ask_user 분기 — Markdown 시도 제거, plain text only.
+captain은 P1.7-ext로 plain 보장이라 Markdown fallback 불필요. 노이즈 차단.
+
+### 2026-04-27 R13-ext 처리 완료
+- /Volumes/AIDRIVE/CLAUDE.md "## API 키" 섹션 평문 키 5종 → 환경변수 참조 표현
+- claude-code-telegram/memory/2026-03-30.md 평문 키 1건 redact 처리
+- 봇 .env (gitignored, chmod 600)에서 키 로드 (load_dotenv 가동 중)
+- test_orchestrator.py:602의 `eyJhbGciOiJIUzI1NiJ9.payload.sig`는 fake fixture (.payload.sig) → 미수정
+
 ## R13 — 봇 시스템 프롬프트 평문 키 노출 (2026-04-27 사고)
 
 발견:
@@ -199,6 +215,15 @@ P1.7-ext 적용 후 captain은 plain text만 생성하지만 orchestrator는 여
 - 노출 채널 = **본인 개인 텔레그램만**. 외부 공개 0, git public 0
 - 외부 유출 가능성 매우 낮음 → **키 rotate 불필요**
 - 향후 노출 차단 (redact 패턴 + 본체 환경변수 이전)에 집중
+
+### R13-ext 처리 완료 (2026-04-27)
+
+- `/Volumes/AIDRIVE/CLAUDE.md`: 평문 키 5종 제거 → 환경변수 참조 형태로 교체 ✓
+- `claude-code-telegram/memory/2026-03-30.md`: redaction 패턴 적용, 평문 0건 ✓
+- `tests/unit/test_orchestrator.py`: 가짜 JWT fixture (`eyJhbGciOiJIUzI1NiJ9.payload.sig`) — sanitize 불필요
+- `data/bot.db`: SQLite binary, 별도 진단 보류 (audit_log 등 메시지 기록일 가능성)
+- 봇 `.env` 키 5종 추가: 세열님 직접 작업 (DEEPSEEK/OPENROUTER/GEMINI/N8N/TAVILY_API_KEY)
+- captain-hook redact 패턴 5종 추가 박힘 (work/sdk_integration.py)
 
 처리:
 1. ~~키 5종 즉시 회수·rotate~~ — 위험도 재평가 후 취소
