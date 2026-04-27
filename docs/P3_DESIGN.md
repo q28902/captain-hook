@@ -100,3 +100,90 @@ async def test_notify_success():
 ## 1주일 마감 후 별도 회차 작업
 
 P3는 1주일 안정화 작업 외 별도. 다음 라운드 진입 시 본 문서 그대로 활용.
+
+---
+
+## 📌 보강 (2026-04-27 events/notifications 점검 결과)
+
+**작업량 1.0x 확정** (1.2x 아님). 봇 본체에 모든 인프라 이미 박혀있음.
+
+### 실측 발견
+
+| 자산 | 위치 | 활용 |
+|---|---|---|
+| `AgentResponseEvent` | `src/events/types.py:46` | payload schema 그대로 차용 (chat_id+text+parse_mode+reply_to_message_id) |
+| `NotificationService` | `src/notifications/service.py:24` | `AgentResponseEvent` 구독 + chat_id 라우팅 + rate-limited send 자동 |
+| `EventBus.publish(event)` | `src/events/bus.py:68` | publish 한 줄로 송신 흐름 trigger |
+| `verify_shared_secret(auth, secret)` | `src/api/auth.py` | `Bearer <secret>` 표준 |
+| webhook publish 패턴 | `src/api/server.py` `event_bus.publish(event)` | 그대로 차용 |
+
+### 보강 명세
+
+**1. handler 코드 — AgentResponseEvent publish**
+```python
+@app.post("/notify")
+async def captain_notify(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+):
+    secret = settings.captain_notify_secret
+    if not secret or not verify_shared_secret(authorization, secret):
+        raise HTTPException(status_code=401, detail="auth")
+
+    payload = await request.json()
+    chat_id = payload.get("chat_id", 0)
+    text = payload.get("text", "")
+    if not text:
+        raise HTTPException(status_code=400, detail="text required")
+
+    # 외부 호출자 식별 prefix (R17 차단)
+    source = payload.get("source", "external")
+    text = f"📡 [{source}] {text}"
+
+    event = AgentResponseEvent(
+        chat_id=chat_id,
+        text=text,
+        parse_mode=payload.get("parse_mode", "HTML"),
+        reply_to_message_id=payload.get("reply_to_message_id"),
+        source="captain_notify",
+    )
+    await event_bus.publish(event)
+    return {"ok": True, "event_id": event.id}
+```
+
+**2. 인증** — 새 헤더 만들 필요 X. `Authorization: Bearer <secret>` 표준 헤더 + `verify_shared_secret` 재사용.
+
+**3. settings 추가** — `captain_notify_secret: Optional[str] = None`
+
+**4. target_chat_id 라우팅** — `chat_id=0` 보내면 NotificationService의 `_resolve_chat_ids`가 자동으로 `default_chat_ids` fallback. 외부 호출자가 명시 시 그쪽으로 송신.
+
+**5. 메시지 prefix (R17 사전 박제)** — `📡 [source] <text>` 형태로 captain 본래 메시지(🔔/❓/⚠️/🛑)와 시각 분리.
+
+### 호출 예시 (보강)
+
+```bash
+curl -X POST http://localhost:8080/notify \
+  -H "Authorization: Bearer $CAPTAIN_NOTIFY_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "digest 완료", "source": "news_intel", "parse_mode": "HTML"}'
+```
+
+### Unit test 보강
+
+```python
+async def test_notify_auth_fail(client):
+    r = await client.post("/notify", json={"text": "x"})
+    assert r.status_code == 401
+
+async def test_notify_publish_event(client, mock_event_bus):
+    r = await client.post(
+        "/notify",
+        headers={"Authorization": "Bearer test_secret"},
+        json={"text": "hello", "source": "test"},
+    )
+    assert r.status_code == 200
+    # mock_event_bus.publish 호출 1회 + AgentResponseEvent type + text "📡 [test] hello"
+    mock_event_bus.publish.assert_called_once()
+    event = mock_event_bus.publish.call_args[0][0]
+    assert event.text.startswith("📡 [test]")
+```

@@ -102,9 +102,15 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 
 ### P3 다음 세션 진입 정보
 
-- 작업량 1x 확정 (src/api/server.py FastAPI 기존 + GitHub HMAC webhook 패턴 차용)
+- **작업량 1.0x 확정** (events/notifications 점검 후, 1.2x → 1.0x로 하향)
 - 봇은 polling 모드 (`enable_api_server` 플래그로 API 서버 동시 가동)
-- P3_DESIGN.md 박제됨 (commit 497c7b7) — endpoint 명세/인증/payload schema/handler 코드 예시
+- 봇 본체 인프라 100% 활용:
+  - `AgentResponseEvent` (chat_id+text+parse_mode+reply_to_message_id) — payload schema 그대로 차용
+  - `NotificationService` — 구독/라우팅/rate-limited send 자동
+  - `EventBus.publish(event)` — 송신 흐름 1줄로 trigger
+  - `verify_shared_secret(Authorization, secret)` — Bearer 표준 차용
+- P3_DESIGN.md 박제됨 (commit 497c7b7 + 보강) — handler 코드 예시 + 인증 + R17 prefix
+- R17 사전 박제: 외부 endpoint 노이즈 + 인증 우회 + rate limit + 호출자 식별
 
 다음 작업 5단계:
 1. `src/api/server.py`에 `/notify` endpoint 추가 (work/ 복제본)

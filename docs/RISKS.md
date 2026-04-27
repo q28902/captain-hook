@@ -115,6 +115,23 @@ A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 | 14 | dumps 파일 날짜 분기 진단 실수 | 항상 ls -lt로 최근 파일 확인 |
 | 15 | ASK_USER push 텔레그램 미도착 (코드 대칭인데 비대칭 동작) | P1.7 stderr print + plain fallback + P1.7-ext plain text |
 | 16 | 봇 다중 인스턴스 동시 가동 (Conflict 사고) | INTEGRATE.md §5 pkill + 인스턴스 검증 |
+| 17 | P3 외부 endpoint 노이즈 + 인증 우회 | shared secret + prefix 분리 + rate limit + 별도 dump |
+
+## R17 — P3 외부 endpoint 노이즈 + 인증 우회 (사전 박제, 2026-04-27)
+
+P3 `POST /notify` endpoint 가동 시 잠재 위험:
+
+1. **인증 우회**: secret 노출 또는 누락 → 외부에서 누구나 텔레그램 스팸 가능
+2. **메시지 노이즈**: captain 본래 push (🔔/❓/⚠️/🛑) vs 외부 호출자 메시지 시각 구분 불가 → 사용자 혼란
+3. **Rate limit 미적용**: 외부 호출자가 무한 호출 → 텔레그램 API quota 소모 + 사용자 메시지 폭주
+4. **호출자 추적 불가**: 어디서 보냈는지 모름 → 디버깅 곤란
+
+처리 (P3 STEP 2 코드 작성 시 동시 박제):
+- shared secret: `Authorization: Bearer <captain_notify_secret>` + `verify_shared_secret` 재사용 (auth.py 차용)
+- prefix 분리: `📡 [source] <text>` 형태로 외부 메시지 자동 마킹
+- rate limit: NotificationService의 `_rate_limited_send` 자동 적용 (chat_id별 throttle)
+- 호출자 식별: payload `source` 필드 필수 (없으면 "external" 기본)
+- 별도 dump 채널: P0 dump에 captain push와 별도 jsonl 누적 (P3 가동 후 진단 용도)
 
 ## R16 — 봇 다중 인스턴스 동시 가동 (2026-04-27 P1.7 cp 사고)
 
