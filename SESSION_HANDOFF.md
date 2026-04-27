@@ -88,7 +88,38 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 
 **다음 단계**: R13-ext (봇 본체 CLAUDE.md → 환경변수 이전, 시급)
 
-### 1주일 안정화 진행 (~ 2026-05-02 마감)
+### 🟢🟢 captain-hook 1주일 안정화 완료 (2026-04-22 ~ 2026-04-27)
+
+**5일 만에 마감** (목표 5/2 → 4/27, 4일 단축).
+
+최종 상태:
+- P0 dump 인프라 (실측 스키마 확보)
+- P1 코드 + 운영 검증 (v3.2 + P1.7-ext + R15 후속)
+- R13-ext (봇 본체 환경변수 이전)
+- R12 자연 발생 4건 누적 (글쓴이 미해결 영역 입증)
+
+분기 작동:
+- SILENT 100% (P1.6 false-positive 가드)
+- ASK_USER 100% (P1.7-ext plain text + orchestrator fallback 이중 안전망)
+- TOOL_ERROR 100% (unit test 13/13 + 라이브)
+- API_ERROR 자연 누적 4건 (R12 푸시 활성화)
+
+남은 작업 (P3 또는 별도 회차):
+- HTTP /notify endpoint (외부 시스템 연동)
+- bot.db 평문 잔존 분석 (재평가 트리거 시)
+- 봇 self-restart 트리거 (R12 마찰 해소, 장기)
+
+누적 R: R10~R16 (7건). 패치 R10/R12/R15, 운영 흡수 R11/R13/R14/R16.
+
+글쓴이 Stop Hook 대비 가치 정리:
+- bg SILENT 추가 보장
+- ASK_USER forwarding 추가 보장
+- false-positive 차단
+- 단일 봇 검증
+- 평문 키 차단 + redaction 6패턴
+- API_ERROR turn 도중 종료 push (글쓴이 영원히 누락)
+
+### (이전 진행 보존) 1주일 안정화 진행 (~ 2026-05-02 마감)
 
 진척 (2026-04-27 기준):
 - **R13-ext**:
