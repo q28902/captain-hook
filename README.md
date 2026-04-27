@@ -31,6 +31,17 @@
 **Base 봇 SHA**: `fa008b3` (`ci: add pre-commit hooks and split lint into separate CI job`).
 이 SHA에 가까울수록 patch 자동 apply 성공률 높음.
 
+**Divergence 진단** (자기 봇 fork와 base 거리 측정):
+```bash
+cd $BOT && git rev-list --count fa008b3..HEAD
+```
+0~5: 즉시 apply 가능 / 5~50: dry-run 권장 / 50+: manual merge 권장.
+
+**Secret 생성 — 환경별 대안** (`openssl rand -hex 32` 외):
+- macOS/Linux: `openssl rand -hex 32`
+- alpine docker: `head -c 32 /dev/urandom | xxd -p -c 32`
+- python: `python3 -c "import secrets; print(secrets.token_hex(32))"`
+
 ```bash
 git clone https://github.com/q28902/captain-hook.git ~/Projects/captain-hook
 BOT=/path/to/your/claude-code-telegram   # ← 자기 봇 경로로 변경
@@ -145,6 +156,7 @@ captain-hook/
 - **SDK 내부 스키마 의존**: `stop_reason` / `terminal_reason` / `tool_use_result` 필드는 Claude Agent SDK 내부 구조. SDK 업데이트 시 silent break 가능. 회귀 시 unit test 먼저 깨짐.
 - **봇 SHA 종속 patches/**: 봇 본체 진화에 따라 patches/ 풀 파일이 conflict. v1.x에서 middleware/plugin 인터페이스 PR로 해결 계획 (P4).
 - **bot.db 평문 잔존**: 본 사고(R13)에서 봇 SQLite 안 평문 키 노출은 미처리. 외부 유출 0이라 보류, 운영 시 본인 책임.
+- **dumps/ rotation 정책 부재**: P0 dump가 `dumps/<date>.jsonl`로 무한 누적. 운영 시 `find dumps/ -mtime +7 -delete` 같은 cron 필요. v1.x에서 자동화 계획.
 - **단일 사용자 가정**: chat_id 1개 환경 전제. 멀티 테넌트는 향후 확장.
 - **이름 충돌**: 검색 노출 약함. fork rename 권장.
 

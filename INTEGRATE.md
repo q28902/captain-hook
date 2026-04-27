@@ -2,30 +2,39 @@
 
 P1 unit test 통과(7/7) 후 봇 운영본에 통합하는 절차.
 
+## 환경변수 (먼저 export)
+
+본 가이드의 모든 명령은 아래 두 변수에 의존. 자기 환경에 맞춰 export 후 진행:
+
+```bash
+export BOT=/path/to/your/claude-code-telegram          # 봇 fork 로컬 경로
+export CAPTAIN_HOOK=~/Projects/captain-hook            # 본 repo clone 경로
+```
+
 ## 1. 코드 배치 (백업 + cp, 절대경로)
 
 **1a. 백업 (sdk_integration.py + orchestrator.py)**
 ```bash
 TS=$(date +%Y%m%d-%H%M%S)
-cp /Volumes/AIDRIVE/claude-code-telegram/src/claude/sdk_integration.py \
-   /Volumes/AIDRIVE/claude-code-telegram/src/claude/sdk_integration.py.bak.p1.${TS}
-cp /Volumes/AIDRIVE/claude-code-telegram/src/bot/orchestrator.py \
-   /Volumes/AIDRIVE/claude-code-telegram/src/bot/orchestrator.py.bak.p1.${TS}
+cp $BOT/src/claude/sdk_integration.py \
+   $BOT/src/claude/sdk_integration.py.bak.p1.${TS}
+cp $BOT/src/bot/orchestrator.py \
+   $BOT/src/bot/orchestrator.py.bak.p1.${TS}
 echo "BACKUP_TS=${TS}"   # 롤백 시 사용
 ```
 
 **1b. captain.py 복제 (신규 파일이라 백업 불필요)**
 ```bash
-cp ~/Projects/claude-captain-hook/src/captain.py \
-   /Volumes/AIDRIVE/claude-code-telegram/src/captain.py
+cp $CAPTAIN_HOOK/src/captain.py \
+   $BOT/src/captain.py
 ```
 
 **1c. 패치된 sdk_integration.py / orchestrator.py 복제 (work/ 검증본)**
 ```bash
-cp ~/Projects/claude-captain-hook/work/sdk_integration.py \
-   /Volumes/AIDRIVE/claude-code-telegram/src/claude/sdk_integration.py
-cp ~/Projects/claude-captain-hook/work/orchestrator.py \
-   /Volumes/AIDRIVE/claude-code-telegram/src/bot/orchestrator.py
+cp $CAPTAIN_HOOK/work/sdk_integration.py \
+   $BOT/src/claude/sdk_integration.py
+cp $CAPTAIN_HOOK/work/orchestrator.py \
+   $BOT/src/bot/orchestrator.py
 # (orchestrator.py 패치는 다음 세션에서 작성)
 ```
 
@@ -135,7 +144,7 @@ async def _on_stream(update_obj: StreamUpdate) -> None:
 3. **ASK_USER**: AskUserQuestion 호출 → 봇이 옵션 텍스트 푸시 1건
 4. **TOOL_ERROR**: "python -c 'import nx' 실행해" → 봇이 ⚠️ 도구 실패 + stderr 푸시
 
-각 케이스마다 `~/Projects/claude-captain-hook/dumps/<date>.p1_decisions.jsonl` 라인 추가 확인.
+각 케이스마다 `$CAPTAIN_HOOK/dumps/<date>.p1_decisions.jsonl` 라인 추가 확인.
 
 ## 5. 봇 재시작 (R16 + R14-후속 반영)
 
@@ -157,7 +166,7 @@ if [ "$COUNT_BEFORE" -ne 0 ]; then
 fi
 
 # 5b. 단일 인스턴스 시작 (nohup + 로그 명시)
-cd /Volumes/AIDRIVE/claude-code-telegram && \
+cd $BOT && \
     nohup poetry run make run > /tmp/bot.log 2>&1 &
 sleep 30
 
@@ -196,16 +205,16 @@ tail -30 /private/tmp/claude-telegram-bot.err
 
 ```bash
 # 백업 복원
-cp /Volumes/AIDRIVE/claude-code-telegram/src/claude/sdk_integration.py.bak.p1.${BACKUP_TS} \
-   /Volumes/AIDRIVE/claude-code-telegram/src/claude/sdk_integration.py
-cp /Volumes/AIDRIVE/claude-code-telegram/src/bot/orchestrator.py.bak.p1.${BACKUP_TS} \
-   /Volumes/AIDRIVE/claude-code-telegram/src/bot/orchestrator.py
-rm -f /Volumes/AIDRIVE/claude-code-telegram/src/captain.py
+cp $BOT/src/claude/sdk_integration.py.bak.p1.${BACKUP_TS} \
+   $BOT/src/claude/sdk_integration.py
+cp $BOT/src/bot/orchestrator.py.bak.p1.${BACKUP_TS} \
+   $BOT/src/bot/orchestrator.py
+rm -f $BOT/src/captain.py
 
 # 봇 재시작 (§5 동일 흐름)
 PID=$(ps -ef | grep claude-telegram-bot | grep -v grep | awk '{print $2}' | head -1)
 [ -n "$PID" ] && kill "$PID" && sleep 2
-cd /Volumes/AIDRIVE/claude-code-telegram && \
+cd $BOT && \
     nohup poetry run make run > /tmp/bot.log 2>&1 &
 ```
 
