@@ -118,6 +118,26 @@ A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 | 17 | P3 외부 endpoint 노이즈 + 인증 우회 | shared secret + prefix 분리 + rate limit + 별도 dump |
 | 18 | 봇 ProductionConfig가 .env 강제 override | environments.py 직접 수정 또는 사전 확인 가이드 |
 | 19 | 텔레그램이 가이드 명령의 `\|\|`를 spoiler 마크다운으로 해석 | if/then/fi 문법 사용 + INTEGRATE.md §5 보강 |
+| 20 | TOOL_ERROR 분기 P1.6 가드 미적용 (false-positive) | v1.x 유지보수 — 자연 누적 평가 후 결정 |
+
+## R20 — TOOL_ERROR 분기 P1.6 가드 미적용 (2026-04-27 v1.0 마감 후 발견)
+
+증상:
+- v1.0 라이브 검증 직후 `dumps/2026-04-27.p1_decisions.jsonl`에서 발견
+- `classification: tool_error` + `last_user_tool_name: null` + `silent_pushed: true`
+- 즉 captain 자체 분석 도구 실패도 사용자에게 push (false-positive)
+
+근본 원인:
+- P1.6 가드는 SILENT 분기만 적용 (`last_user_tool_name=None이면 push X`)
+- TOOL_ERROR는 `any_tool_error` 누적 + push 무조건 — 분기 정책 비대칭
+- captain.py `silent_detector_decide`에서 SILENT 가드 후 TOOL_ERROR 가드 누락
+
+처리 옵션:
+1. **TOOL_ERROR도 `last_user_tool_name=null` 시 skip** (P1.6 가드 확장) — 단순, 즉시 적용 가능
+2. **`any_tool_error_direct` 필드 활용** — 사용자 의도 도구 실패만 누적
+3. **그대로 유지** — 안전망 우선, false-positive는 운영 노이즈로 흡수
+
+처리 시점: **v1.x 유지보수** — 자연 누적 1주일 후 false-positive 빈도 평가 후 결정 (1번 vs 3번).
 
 ## R18 — 봇 ProductionConfig가 .env 강제 override (2026-04-27)
 
