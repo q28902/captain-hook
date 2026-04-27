@@ -1,13 +1,22 @@
 # CHANGELOG
 
-## v1.0 (2026-04-27 마감)
+## v0.9-rc (2026-04-27)
 
-핵심 미션 4건 모두 작동:
+P3 라이브 검증 통과 후 v1.0 정식 마감.
 
-1. **봇 내부 누락 검출** — P0/P1 (SILENT/TOOL_ERROR/ASK_USER/API_ERROR 분기)
-2. **글쓴이 미해결 영역 보장** — R12/R10/false-positive 가드
-3. **외부 시스템 → captain 채널** — P3 /notify endpoint
-4. **진단 인프라** — R10~R17 누적 박제 + INTEGRATE.md 표준 가이드
+핵심 미션 4건 작동:
+
+1. **봇 내부 누락 검출** — P0/P1 (SILENT/TOOL_ERROR/ASK_USER/API_ERROR 분기) ✅
+2. **글쓴이 미해결 영역 보장** — R12/R10/false-positive 가드 ✅
+3. **외부 시스템 → captain 채널** — P3 코드 + unit test 5/5 ⚠️ (라이브 미검증)
+4. **진단 인프라** — R10~R17 누적 박제 + INTEGRATE.md 표준 가이드 ✅
+
+### v1.0 마감 조건 (P3 라이브 검증 4건)
+
+- ENABLE_API_SERVER 통과
+- API 포트 확정 + curl 정상 호출
+- 텔레그램 📡 prefix 도착
+- captain decision log 분리 (또는 R17 보강)
 
 ### 글쓴이 Stop Hook 대비 가치
 
@@ -17,15 +26,15 @@
 - API_ERROR turn 도중 종료 push (R12 자연 5건+ 검증)
 - 단일 봇 검증 (R16)
 - 평문 키 차단 + redaction 6패턴 (R13/R13-ext)
-- 외부 시스템 진입점 (P3)
+- 외부 시스템 진입점 (P3, 코드 단계)
 
 ### 라이브 검증
 
 - 1주일 안정화 (4-22 ~ 4-27, **5일 압축**)
-- ASK_USER plain text 도착 확인
-- SILENT bg 도착 확인
-- API_ERROR 자연 발생 5건+
-- P3 curl 호출 도착 확인
+- ASK_USER plain text 도착 확인 ✅
+- SILENT bg 도착 확인 ✅
+- API_ERROR 자연 발생 5건+ ✅
+- P3 코드 + unit test 5/5 통과 ⚠️ (라이브 검증 미실시 — 다음 회차에 실측)
 
 ### 미해결 (v1.x 영역)
 
