@@ -67,14 +67,26 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 - **도구 실패 ≠ turn 실패** 통찰 박제 (D 패턴 직결)
 - SCHEMA.md / P0_DUMP.md / scripts/p0_check.sh 동기화
 
-### 🟡 P1 코드 종료 — v3.2 (운영본 미배포, 2026-04-27)
+### 🟢 P1 운영 종료 — v3.2 + P1.7-ext (2026-04-27)
 
-**구분**: 코드 종료 ≠ 운영 검증 (R14 재발 방지 표현 정정).
-- 코드: P1.6 가드 + R12 분기 + Idle 6번 unit test 13/13 (push 완료)
-- 운영본: v3 그대로 (R12 미패치 + P1.6 미적용)
-- 라이브 검증: 0건 (cp 미실시)
-- → 진정한 종료는 cp + 재시작 + 라이브 5/5 통과 후
-- **R13-ext 진입 전 처리 필수**
+**라이브 검증 통과**:
+- **SILENT 분기**: 텔레그램 도착 ✅ (single bot, last_user_tool=Bash 진짜 SILENT)
+- **ASK_USER 분기**: P1.7-ext plain text + orchestrator Markdown→plain fallback 이중 안전망, 도착 ✅
+- **TOOL_ERROR**: unit test 13/13 채택 (봇 명령 정책 의존으로 라이브 trigger 불안정)
+- **API_ERROR (R12)**: 코드+test 검증, 라이브 자연 누적 대기
+- **false-positive (P1.6 가드)**: last_user_tool=null SILENT push 차단 작동
+- **단일 봇 인스턴스 검증 (R16)**: pkill + COUNT_AFTER=1 + Conflict=0
+
+**글쓴이 Stop Hook 대비 captain-hook 가치**:
+- bg SILENT 분기 추가 보장
+- ASK_USER forwarding 추가 보장
+- false-positive 차단 (글쓴이 미해결 영역)
+
+**누적 위험 R10~R16 (7건 발견)**:
+- 패치 완료: R10 (AskUserQuestion forwarding), R12 (API_ERROR push), R15 (Markdown parse)
+- 운영 절차 흡수: R11 (self-noise overwrite), R13 (평문 키 노출), R14 (dump/log 경로 분기 실수), R16 (다중 봇 인스턴스)
+
+**다음 단계**: R13-ext (봇 본체 CLAUDE.md → 환경변수 이전, 시급)
 
 원본 박제 (참고용 — 31% 가치는 v3 baseline 기준이라 v3.2 적용 후 변동 가능):
 

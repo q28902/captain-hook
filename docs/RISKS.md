@@ -170,6 +170,19 @@ P1.7 패치 (work/orchestrator.py):
 - "Markdown FAILED" 보임 → Markdown parse 에러 확정 → plain fallback이 도착해야 정상
 - 둘 다 OK인데 텔레그램 미도착 → 텔레그램 API 자체 문제 (rate limit, 세션 timeout 등)
 
+### 2026-04-27 후속 — Markdown FAILED 노이즈 잔존
+
+P1.7-ext 적용 후 captain은 plain text만 생성하지만 orchestrator는 여전히 `parse_mode="Markdown"` 시도 → 매 ASK_USER마다 "Markdown FAILED → plain reply OK" 로그 누적.
+
+원인: description에 markdown link 형식 (`[label](url)`) 등 포함 시 entity parse 실패. captain이 plain 보내도 orchestrator의 1차 시도가 Markdown이라 일부 텍스트(`(`,`)`, `:` 조합)가 entity로 오인 가능.
+
+처리 시점: P1.7-ext-final (R13-ext와 묶음 권장).
+코드 변경: orchestrator.py captain_ask_user 분기 첫 reply_text의 `parse_mode="Markdown"` 제거 (또는 captain push payload에 metadata로 plain 명시 → orchestrator가 분기).
+
+부수 효과:
+- /private/tmp/claude-telegram-bot.log 39MB 누적 속도 감소
+- 진짜 에러 가시성 향상
+
 ## R13 — 봇 시스템 프롬프트 평문 키 노출 (2026-04-27 사고)
 
 발견:
