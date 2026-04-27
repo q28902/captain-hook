@@ -1,0 +1,68 @@
+--- src/api/server.py
++++ src/api/server.py
+@@ -12,7 +12,7 @@
+ 
+ from ..config.settings import Settings
+ from ..events.bus import EventBus
+-from ..events.types import WebhookEvent
++from ..events.types import AgentResponseEvent, WebhookEvent
+ from ..storage.database import DatabaseManager
+ from .auth import verify_github_signature, verify_shared_secret
+ 
+@@ -37,6 +37,56 @@
+     async def health_check() -> Dict[str, str]:
+         return {"status": "ok"}
+ 
++    @app.post("/notify")
++    async def captain_notify(
++        request: Request,
++        authorization: Optional[str] = Header(None),
++    ) -> Dict[str, Any]:
++        """captain-hook P3 — 외부 시스템이 텔레그램 알림 채널로 송신.
++
++        Authorization: Bearer <captain_notify_secret>
++        Body: {chat_id, text, parse_mode?, reply_to_message_id?, caller_id}
++        Flow: AgentResponseEvent publish → NotificationService → 텔레그램
++        """
++        secret = settings.captain_notify_secret
++        if not secret:
++            raise HTTPException(status_code=503, detail="notify endpoint disabled")
++        if not verify_shared_secret(authorization, secret):
++            raise HTTPException(status_code=401, detail="invalid auth")
++
++        try:
++            payload = await request.json()
++        except Exception:
++            raise HTTPException(status_code=400, detail="invalid json")
++
++        text = payload.get("text", "")
++        if not text:
++            raise HTTPException(status_code=400, detail="text required")
++        chat_id = payload.get("chat_id", 0)
++        if not isinstance(chat_id, int):
++            raise HTTPException(status_code=400, detail="chat_id must be int")
++        caller_id = payload.get("caller_id", "external")
++
++        # R17 prefix — 외부 호출 시각 분리, captain push와 구분
++        prefixed_text = f"📡 [{caller_id}] {text}"
++
++        event = AgentResponseEvent(
++            chat_id=chat_id,
++            text=prefixed_text,
++            parse_mode=payload.get("parse_mode"),
++            reply_to_message_id=payload.get("reply_to_message_id"),
++            source="captain_notify",
++        )
++        await event_bus.publish(event)
++
++        logger.info(
++            "captain notify published",
++            caller_id=caller_id,
++            chat_id=chat_id,
++            event_id=event.id,
++        )
++        return {"ok": True, "event_id": event.id}
++
+     @app.post("/webhooks/{provider}")
+     async def receive_webhook(
+         provider: str,

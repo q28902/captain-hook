@@ -1,0 +1,12 @@
+--- src/config/settings.py
++++ src/config/settings.py
+@@ -305,6 +305,9 @@
+     webhook_api_secret: Optional[str] = Field(
+         None, description="Shared secret for generic webhook providers"
+     )
++    captain_notify_secret: Optional[str] = Field(
++        None, description="captain-hook P3 /notify endpoint shared secret (Bearer auth)"
++    )
+     notification_chat_ids: Optional[List[int]] = Field(
+         None, description="Default Telegram chat IDs for proactive notifications"
+     )

@@ -1,0 +1,40 @@
+--- src/bot/orchestrator.py
++++ src/bot/orchestrator.py
+@@ -747,6 +747,37 @@
+         last_edit_time = [0.0]  # mutable container for closure
+ 
+         async def _on_stream(update_obj: StreamUpdate) -> None:
++            # captain-hook P1 — push 분기 (silent / ask_user)
++            # sdk_integration.py에서 captain.classify 후 결정 payload를
++            # StreamUpdate(type="captain_silent_push" / "captain_ask_user")
++            # 형태로 흘려보냄. 여기서 텔레그램 송신만 처리.
++            if update_obj.type == "captain_silent_push":
++                try:
++                    await progress_msg.reply_text(
++                        update_obj.content or "",
++                        parse_mode="Markdown",
++                    )
++                except Exception as captain_e:
++                    logger.warning(
++                        "captain silent push failed",
++                        error=str(captain_e),
++                    )
++                return  # 기존 stream 로직 우회
++            if update_obj.type == "captain_ask_user":
++                # P1.7 R15 진단: silent fail 위치 강제 stderr 출력 + plain fallback
++                import sys as _captain_sys_aua
++                _ask_text = update_obj.content or ""
++                print(f"[captain ASK_USER] entry, len={len(_ask_text)}, progress_msg={type(progress_msg).__name__}", file=_captain_sys_aua.stderr, flush=True)
++                # P1.7-ext-final (R15 후속): captain은 plain text 보장 (P1.7-ext) →
++                # Markdown 시도 자체 안 함. 매 ASK_USER마다 "Markdown FAILED" 로그 누적 차단.
++                try:
++                    await progress_msg.reply_text(_ask_text)  # plain only
++                    print("[captain ASK_USER] plain OK", file=_captain_sys_aua.stderr, flush=True)
++                except Exception as captain_e:
++                    print(f"[captain ASK_USER] plain FAILED: {type(captain_e).__name__}: {captain_e}", file=_captain_sys_aua.stderr, flush=True)
++                    logger.error("captain ask_user plain failed", error=str(captain_e))
++                return  # 기존 stream 로직 우회
++
+             # Stop all streaming activity after interrupt
+             if interrupt_event is not None and interrupt_event.is_set():
+                 return

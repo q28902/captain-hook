@@ -1,0 +1,20 @@
+--- src/config/environments.py
++++ src/config/environments.py
+@@ -56,12 +56,14 @@
+     development_mode: bool = False
+     log_level: str = "INFO"
+     enable_telemetry: bool = True
+-    # Use stricter defaults for production
+-    claude_max_cost_per_user: float = 5.0  # Lower cost limit
+-    claude_max_cost_per_request: float = 2.0  # Per-request SDK cap
++    # 한도 해제 (2026-04-27, .env CLAUDE_MAX_COST_PER_* 매핑 실패 회피)
++    claude_max_cost_per_user: float = 99999.0  # 사용자 누적 한도 해제
++    claude_max_cost_per_request: float = 99999.0  # turn budget 한도 해제
+     rate_limit_requests: int = 5  # Stricter rate limiting
+     session_timeout_hours: int = 12  # Shorter session timeout
+     claude_timeout_seconds: int = 1800  # 30min — explicit in prod too
++    # P3 (2026-04-27): .env ENABLE_API_SERVER 매핑 실패 회피, production 강제 활성화
++    enable_api_server: bool = True
+ 
+     @classmethod
+     def as_dict(cls) -> Dict[str, Any]:

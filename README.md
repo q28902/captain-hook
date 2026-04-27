@@ -26,34 +26,46 @@
 
 ---
 
-## 30초 install (요약)
+## 30초 install (unified diff apply)
 
-봇 fork(`RichardAtCT/claude-code-telegram`) 가동 중인 상태에서:
+**Base 봇 SHA**: `fa008b3` (`ci: add pre-commit hooks and split lint into separate CI job`).
+이 SHA에 가까울수록 patch 자동 apply 성공률 높음.
 
 ```bash
 git clone https://github.com/q28902/captain-hook.git ~/Projects/captain-hook
-cd ~/Projects/captain-hook
-
-# 봇 본체 5개 파일 백업 + 패치 적용 (자세한 절차는 INTEGRATE.md §1 참조)
-TS=$(date +%Y%m%d-%H%M%S)
 BOT=/path/to/your/claude-code-telegram   # ← 자기 봇 경로로 변경
-for f in src/captain.py src/api/server.py src/config/settings.py src/config/environments.py src/claude/sdk_integration.py src/bot/orchestrator.py; do
-    [ -f "$BOT/$f" ] && cp "$BOT/$f" "$BOT/$f.bak.${TS}"
-done
-cp src/captain.py "$BOT/src/captain.py"
-cp patches/server.py "$BOT/src/api/server.py"
-cp patches/settings.py "$BOT/src/config/settings.py"
-cp patches/environments.py "$BOT/src/config/environments.py"
-cp patches/sdk_integration.py "$BOT/src/claude/sdk_integration.py"
-cp patches/orchestrator.py "$BOT/src/bot/orchestrator.py"
 
-# .env 보강 + 봇 재시작 (R16 가이드)
+# 1) 봇 본체 백업 + captain.py 신규 cp
+TS=$(date +%Y%m%d-%H%M%S)
+mkdir -p "$BOT/.captain-bak.$TS"
+cp "$BOT/src/claude/sdk_integration.py" "$BOT/.captain-bak.$TS/"
+cp "$BOT/src/bot/orchestrator.py" "$BOT/.captain-bak.$TS/"
+cp "$BOT/src/api/server.py" "$BOT/.captain-bak.$TS/"
+cp "$BOT/src/config/settings.py" "$BOT/.captain-bak.$TS/"
+cp "$BOT/src/config/environments.py" "$BOT/.captain-bak.$TS/"
+cp ~/Projects/captain-hook/src/captain.py "$BOT/src/captain.py"
+
+# 2) 5개 unified diff apply (자동)
+cd "$BOT"
+for f in environments orchestrator sdk_integration server settings; do
+    patch --dry-run -p0 -i ~/Projects/captain-hook/patches/${f}.patch \
+      && patch -p0 -i ~/Projects/captain-hook/patches/${f}.patch \
+      || echo "FAIL: ${f}.patch — manual merge from patches/${f}.py"
+done
+
+# 3) .env 보강
 echo "ENABLE_API_SERVER=true" >> "$BOT/.env"
 echo "CAPTAIN_NOTIFY_SECRET=$(openssl rand -hex 32)" >> "$BOT/.env"
-# 봇 재시작은 INTEGRATE.md §5 참조 (pkill + 단일 인스턴스 검증)
+
+# 4) 봇 재시작은 INTEGRATE.md §5 참조 (pkill + 단일 인스턴스 검증)
 ```
 
-⚠️ **patches/는 봇 SHA 의존 풀 파일**. 자기 봇 fork와 라인 단위 conflict 가능 → manual merge 필요. 자세한 통합 절차: [`INTEGRATE.md`](INTEGRATE.md).
+**Patch dry-run 실패 시 fallback 3가지**:
+1. `patches/{file}.py` 풀 파일 직접 cp (봇 SHA 동일 시 안전)
+2. `git apply --reject` 후 `.rej` 파일 보고 manual merge
+3. 핵심 captain 분기만 `INTEGRATE.md` §2~§4 참조해 코드로 추가
+
+⚠️ **자기 봇 fork SHA**가 base `fa008b3`에서 멀수록 conflict 증가. v1.x P4에서 middleware/plugin 인터페이스 PR로 patches/ 의존 제거 계획.
 
 ---
 

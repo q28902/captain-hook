@@ -1,0 +1,146 @@
+--- src/claude/sdk_integration.py
++++ src/claude/sdk_integration.py
+@@ -57,6 +57,76 @@
+ )
+ 
+ 
++# ============================================================
++# captain-hook P0: stream-json raw dump
++# - fail-safe: never raises into bot main loop
++# - redaction applied at dump time (local plaintext also safe)
++# - tee location: just before parse_message(raw_data) in execute_command
++# ============================================================
++import json as _captain_json
++import sys as _captain_sys
++import time as _captain_time
++from datetime import date as _captain_date
++
++_CAPTAIN_DUMP_DIR = os.path.expanduser("~/Projects/claude-captain-hook/dumps")
++
++_CAPTAIN_REDACT_PATTERNS = [
++    (re.compile(r"sk-[A-Za-z0-9_-]{20,}"), "sk-REDACTED"),
++    (re.compile(r"Bearer\s+[A-Za-z0-9._-]+", re.IGNORECASE), "Bearer REDACTED"),
++    (
++        re.compile(
++            r"""(["']?(?:api_?key|token|secret|password)["']?\s*[:=]\s*["']?)[^"'\s,}]+""",
++            re.IGNORECASE,
++        ),
++        r"\1REDACTED",
++    ),
++    (re.compile(r"/Users/[^/\s\"']+"), "/Users/REDACTED"),
++    (re.compile(r"AIza[0-9A-Za-z_-]{30,}"), "AIza-REDACTED"),
++    (re.compile(r"gho_[A-Za-z0-9]{30,}"), "gho-REDACTED"),
++    # 2026-04-27 R13 사고 후 추가 — 5종
++    (re.compile(r"sk-or-v1-[a-f0-9]{64}"), "sk-or-REDACTED"),  # OpenRouter
++    (re.compile(r"AIzaSy[A-Za-z0-9_-]{33}"), "AIzaSy-REDACTED"),  # Gemini (정밀)
++    (re.compile(r"tvly-(?:dev|prod)-[A-Za-z0-9]{20,}"), "tvly-REDACTED"),  # Tavily
++    (re.compile(r"eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}"), "JWT-REDACTED"),  # JWT (n8n 등)
++    (re.compile(r"sk-d[0-9a-f]{30,}"), "sk-d-REDACTED"),  # DeepSeek
++]
++
++
++def _captain_redact(s: str) -> str:
++    for _pat, _repl in _CAPTAIN_REDACT_PATTERNS:
++        s = _pat.sub(_repl, s)
++    return s
++
++
++def _captain_dump_raw(raw_data: Any, session_id: Optional[str]) -> None:
++    """Dump one raw stream-json event to today's jsonl file. Never raises."""
++    try:
++        os.makedirs(_CAPTAIN_DUMP_DIR, exist_ok=True)
++        _raw_str = _captain_json.dumps(raw_data, default=str, ensure_ascii=False)
++        _redacted = _captain_redact(_raw_str)
++        try:
++            _raw_obj = _captain_json.loads(_redacted)
++        except Exception:
++            _raw_obj = _redacted  # fallback: keep as string if reparsing breaks
++        _line = _captain_json.dumps(
++            {
++                "ts": _captain_time.time(),
++                "session_id": session_id,
++                "raw": _raw_obj,
++            },
++            ensure_ascii=False,
++        )
++        _path = f"{_CAPTAIN_DUMP_DIR}/{_captain_date.today()}.jsonl"
++        with open(_path, "a") as _f:
++            _f.write(_line + "\n")
++    except Exception as _e:
++        # Bot main loop must never break because of dump failure.
++        print(f"[captain-hook P0] dump skipped: {_e}", file=_captain_sys.stderr)
++# ============================================================
++# end captain-hook P0
++# ============================================================
++
++
+ def _extract_last_tool_results(
+     messages: list, max_chars: int = 1500
+ ) -> Optional[str]:
+@@ -428,6 +498,29 @@
+             messages: List[Message] = []
+             interrupted = False
+ 
++            # captain-hook P1 — turn 단위 분류 state (fail-safe)
++            try:
++                from ..captain import (
++                    TurnState as _CaptainTurnState,
++                    TurnEnd as _CaptainTurnEnd,
++                    classify as _captain_classify,
++                    silent_detector_decide as _captain_silent_decide,
++                    ask_user_forwarding_decide as _captain_ask_decide,
++                    log_decision as _captain_log_decision,
++                )
++                _captain_state = _CaptainTurnState()
++                _captain_available = True
++            except Exception as _captain_import_e:
++                # P1.5 디버그: silently fail 진단 — stderr 강제 출력
++                import sys as _captain_sys2
++                print(f"[captain DEBUG] import FAILED: {type(_captain_import_e).__name__}: {_captain_import_e}", file=_captain_sys2.stderr, flush=True)
++                logger.warning(
++                    "captain-hook P1 disabled (import failed)",
++                    error=str(_captain_import_e),
++                )
++                _captain_state = None
++                _captain_available = False
++
+             async def _run_client() -> None:
+                 client = ClaudeSDKClient(options)
+                 try:
+@@ -465,6 +558,36 @@
+                         await client.query(prompt)
+ 
+                     async for raw_data in client._query.receive_messages():
++                        # captain-hook P0 tee — capture raw before SDK abstraction
++                        _captain_dump_raw(raw_data, session_id)
++                        # captain-hook P1 — classify + decide + push (fail-safe)
++                        if _captain_available and _captain_state is not None:
++                            try:
++                                _captain_state.update(raw_data)
++                                _cls = _captain_classify(raw_data, _captain_state)
++                                if _cls != _CaptainTurnEnd.TURN_PROGRESS:
++                                    _silent = _captain_silent_decide(_captain_state, _cls)
++                                    _ask = _captain_ask_decide(_captain_state, _cls)
++                                    _captain_log_decision(_captain_state, _cls, _silent, _ask)
++                                    if _silent and stream_callback:
++                                        await stream_callback(StreamUpdate(
++                                            type="captain_silent_push",
++                                            content=_silent.get("text"),
++                                            metadata={"level": _silent.get("level", "info")},
++                                        ))
++                                        _captain_state.text_response_count += 1
++                                    if _ask and stream_callback:
++                                        await stream_callback(StreamUpdate(
++                                            type="captain_ask_user",
++                                            content=_ask.get("text"),
++                                            metadata={"options": _ask.get("options", [])},
++                                        ))
++                                        _captain_state.text_response_count += 1
++                            except Exception as _captain_runtime_e:
++                                logger.debug(
++                                    "captain-hook P1 runtime error",
++                                    error=str(_captain_runtime_e),
++                                )
+                         try:
+                             message = parse_message(raw_data)
+                         except MessageParseError as e:
