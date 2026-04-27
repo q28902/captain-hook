@@ -124,6 +124,42 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 - `src/api/server.py` 본문 grep으로 bot.application 접근 패턴 확인 (4번 작업 사전 점검)
 - 그 후 work/ 복제본 작성 진입
 
+### P3 라이브 검증 사전 점검 (cp + 재시작 *전*)
+
+**1. ENABLE_API_SERVER 검증**
+```bash
+grep ENABLE_API_SERVER /Volumes/AIDRIVE/claude-code-telegram/.env
+```
+- true → 진행
+- false/부재 → `echo "ENABLE_API_SERVER=true" >> .env` 추가
+
+**2. API 서버 포트 확정 (cp + 재시작 *후*)**
+- 봇 로그 또는 lsof로 listen 포트 확인 — 8080 가정 X
+- settings.py default 또는 .env `API_PORT` 명시 확인
+
+**3. CHAT_ID 권한 검증**
+```bash
+grep -E "ALLOWED_USERS|TELEGRAM_USER_ID" /Volumes/AIDRIVE/claude-code-telegram/.env
+```
+- `CHAT_ID=2138498623`가 allowed_users에 포함됐는지 확인
+- NotificationService가 미허용 chat_id 무시할 수 있음 = silent fail 위험
+
+**4. P3와 captain decision log 분리 검증**
+```bash
+# curl 직후:
+tail -3 ~/Projects/claude-captain-hook/dumps/$(date +%Y-%m-%d).p1_decisions.jsonl
+```
+- 새 라인 추가 X → (a) 깔끔 분리 (정상)
+- 새 라인 추가 → (b) R17 보강 필요 (P3 외부 알림이 captain 분기 트리거)
+
+### 판정 매트릭스
+
+- 4건 모두 통과 + 텔레그램 도착 → P3 1차 종료
+- 1번 false + 봇 추가 시 통과 → ENABLE_API_SERVER 박제 후 정상
+- 2번 8080 ≠ 실제 포트 → 가이드 정정 + 재시도
+- 3번 미허용 → allowed_users 추가 후 재시도
+- 4번 (b) → R17에 "P3 알림이 captain 분기 트리거 위험" 보강 박제
+
 ### 🟢🟢 captain-hook 1주일 안정화 완료 (2026-04-22 ~ 2026-04-27)
 
 **5일 만에 마감** (목표 5/2 → 4/27, 4일 단축).
