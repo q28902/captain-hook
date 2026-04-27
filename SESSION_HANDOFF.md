@@ -100,6 +100,24 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 
 자세한 명세: [`docs/P3_DESIGN.md`](docs/P3_DESIGN.md)
 
+### P3 다음 세션 진입 정보
+
+- 작업량 1x 확정 (src/api/server.py FastAPI 기존 + GitHub HMAC webhook 패턴 차용)
+- 봇은 polling 모드 (`enable_api_server` 플래그로 API 서버 동시 가동)
+- P3_DESIGN.md 박제됨 (commit 497c7b7) — endpoint 명세/인증/payload schema/handler 코드 예시
+
+다음 작업 5단계:
+1. `src/api/server.py`에 `/notify` endpoint 추가 (work/ 복제본)
+2. `.env`에 `CAPTAIN_HOOK_NOTIFY_TOKEN` 추가 (세열 직접)
+3. unit test (인증/payload validation/send_message mock)
+4. server.py에서 봇 application 접근성 점검 (bot_application 또는 telegram client 인스턴스 보유 여부)
+5. cp + R16 가이드 재시작 + curl 라이브 검증
+
+진입 시 첫 명령:
+- INTEGRATE.md §1 + §5 dry-run (R16 표준 가이드 그대로)
+- `src/api/server.py` 본문 grep으로 bot.application 접근 패턴 확인 (4번 작업 사전 점검)
+- 그 후 work/ 복제본 작성 진입
+
 ### 🟢🟢 captain-hook 1주일 안정화 완료 (2026-04-22 ~ 2026-04-27)
 
 **5일 만에 마감** (목표 5/2 → 4/27, 4일 단축).
