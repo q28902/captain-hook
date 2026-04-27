@@ -15,7 +15,7 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 ## 현재까지
 
 - 설계 문서 4종 작성·push 완료 (`README.md`, `docs/PROBLEM.md`, `docs/DESIGN.md`, `docs/COMPARISON.md`)
-- sample2 검토 완료 → 본체 운영 X 결정, 핵심 패턴만 흡수 (P4)
+- 참고 prototype 검토 완료 → 본체 운영 X 결정, 핵심 패턴만 흡수 (P4)
 - 3층 구조 + Phase 1~4 로드맵 확정
 
 ## 다음 세션 즉시 착수 — Phase 0 (P0) ⚠️ P1 아님
@@ -23,7 +23,7 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 **우선순위 재배치 (2026-04-26 세열님 5개 지적 + 보강 박제 반영)**:
 - P0 신설 (stream-json 덤프, 종료기준=샘플충분성) — P1 진입 전 필수
 - P1: 파서 + bg 실패 가시화 (D 패턴 포함, wrapper 인터셉트 방식)
-- P2: silent_detector + 요약 레이어 (글쓴이 `has_telegram_send_in_turn` 가드 흡수)
+- P2: silent_detector + 요약 레이어 (기존 방식 `has_telegram_send_in_turn` 가드 흡수)
 - P3: HTTP /notify (인증 포함)
 - P4: middleware PR + Stop Hook (upstream divergence 차단)
 - **P5**: heartbeat 기반 메타 알림 (R9 대응 — captain-hook 자체 침묵 방지)
@@ -77,10 +77,10 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 - **false-positive (P1.6 가드)**: last_user_tool=null SILENT push 차단 작동
 - **단일 봇 인스턴스 검증 (R16)**: pkill + COUNT_AFTER=1 + Conflict=0
 
-**글쓴이 Stop Hook 대비 captain-hook 가치**:
+**기존 Stop Hook 대비 captain-hook 가치**:
 - bg SILENT 분기 추가 보장
 - ASK_USER forwarding 추가 보장
-- false-positive 차단 (글쓴이 미해결 영역)
+- false-positive 차단 (기존 방식 미해결 영역)
 
 **누적 위험 R10~R16 (7건 발견)**:
 - 패치 완료: R10 (AskUserQuestion forwarding), R12 (API_ERROR push), R15 (Markdown parse)
@@ -191,7 +191,7 @@ tail -3 ~/Projects/claude-captain-hook/dumps/$(date +%Y-%m-%d).p1_decisions.json
 - P0 dump 인프라 (실측 스키마 확보)
 - P1 코드 + 운영 검증 (v3.2 + P1.7-ext + R15 후속)
 - R13-ext (봇 본체 환경변수 이전)
-- R12 자연 발생 4건 누적 (글쓴이 미해결 영역 입증)
+- R12 자연 발생 4건 누적 (기존 방식 미해결 영역 입증)
 
 분기 작동:
 - SILENT 100% (P1.6 false-positive 가드)
@@ -206,13 +206,13 @@ tail -3 ~/Projects/claude-captain-hook/dumps/$(date +%Y-%m-%d).p1_decisions.json
 
 누적 R: R10~R16 (7건). 패치 R10/R12/R15, 운영 흡수 R11/R13/R14/R16.
 
-글쓴이 Stop Hook 대비 가치 정리:
+기존 Stop Hook 대비 가치 정리:
 - bg SILENT 추가 보장
 - ASK_USER forwarding 추가 보장
 - false-positive 차단
 - 단일 봇 검증
 - 평문 키 차단 + redaction 6패턴
-- API_ERROR turn 도중 종료 push (글쓴이 영원히 누락)
+- API_ERROR turn 도중 종료 push (기존 방식 영원히 누락)
 
 ### (이전 진행 보존) 1주일 안정화 진행 (~ 2026-05-02 마감)
 
@@ -246,7 +246,7 @@ tail -3 ~/Projects/claude-captain-hook/dumps/$(date +%Y-%m-%d).p1_decisions.json
 - import FAILED는 logger.warning 보존 (R14 교훈: silently fail 재발 방지)
 
 **unit test 12/12 통과**:
-1 NORMAL · 2 SILENT · 3 ASK_USER · 4 TOOL_ERROR · 5 API_ERROR(R12) · 6 SILENT skip(글쓴이 가드) · 7 None fail-safe · 8 TOOL_ERROR 누적 · 9 ASK_USER 보존 · 10 SILENT direct 필터 · 11 P1.6 self-noise · 13 Idle(6번=1번 통합)
+1 NORMAL · 2 SILENT · 3 ASK_USER · 4 TOOL_ERROR · 5 API_ERROR(R12) · 6 SILENT skip(기본 가드) · 7 None fail-safe · 8 TOOL_ERROR 누적 · 9 ASK_USER 보존 · 10 SILENT direct 필터 · 11 P1.6 self-noise · 13 Idle(6번=1번 통합)
 
 **P1 진행 history (전체)**:
 1. P1 1차: stream-json 파서 + silent_detector + ask_user_forwarding 3종 (df10484)
@@ -258,11 +258,11 @@ tail -3 ~/Projects/claude-captain-hook/dumps/$(date +%Y-%m-%d).p1_decisions.json
 7. R13 사고: 봇 시스템 프롬프트 평문 키 노출 → redact 패턴 5종 추가
 8. P1.6: self-noise SILENT 가드 + Idle 1번 흡수 (91b57fb)
 
-**글쓴이 Stop Hook 대비 captain-hook 가치 (실측)**:
+**기존 Stop Hook 대비 captain-hook 가치 (실측)**:
 - 라이브 13건 중 4건 = bg SILENT 분기 (last_user_tool=Bash 진짜 SILENT)
-- → **31% 추가 알림 보장** (글쓴이 Stop Hook은 turn 종료 시점만, bg 작업 분기 X)
-- TOOL_ERROR 2건도 글쓴이 Stop Hook 미커버 영역
-- ASK_USER 1건은 글쓴이 핵심 가치와 동일
+- → **31% 추가 알림 보장** (기존 Stop Hook은 turn 종료 시점만, bg 작업 분기 X)
+- TOOL_ERROR 2건도 기존 Stop Hook 미커버 영역
+- ASK_USER 1건은 기존 방식 핵심 가치와 동일
 
 **남은 작업** (P2 또는 P5):
 - P2 silent 요약 레이어 (Haiku/Flash로 30단어)
@@ -278,7 +278,7 @@ tail -3 ~/Projects/claude-captain-hook/dumps/$(date +%Y-%m-%d).p1_decisions.json
 - → R12 박제 + silent_detector_decide에 API_ERROR 분기 추가 (v3.1)
 
 **v3.1 코드·테스트 push 완료** (commit ed59a54):
-- captain.py: API_ERROR push 활성화 (글쓴이 가드 무시)
+- captain.py: API_ERROR push 활성화 (기본 가드 무시)
 - test_captain.py case 5: replies=1 + "비정상 종료" 마커 검증
 - test_orchestrator_patch.py case 5 동일
 - 양쪽 unit test 통과 (10/10, 7/7)
@@ -367,7 +367,7 @@ P0 진척도 70% (🟢 4 / 🟡 3 / 🔴 1).
 
 - Phase 2 (P2): 빈 응답·조용한 종료 자동 가시화 — `silent_detector.py`
 - Phase 3 (P3): 봇 안 `POST /notify` 외부 호출용 엔드포인트
-- Phase 4 (P4): `~/.claude/settings.json` Stop Hook 등록 (sample2 차용)
+- Phase 4 (P4): `~/.claude/settings.json` Stop Hook 등록 (참고 prototype 차용)
 
 ## 검증 체크리스트 (DESIGN.md 발췌)
 
@@ -389,5 +389,5 @@ P0 진척도 70% (🟢 4 / 🟡 3 / 🔴 1).
 
 - 봇 본체: `/Volumes/AIDRIVE/claude-code-telegram/` (origin: `RichardAtCT/claude-code-telegram`)
 - cct-notifier: `~/Projects/claude/cct-notifier/`
-- sample2 참고용: `/Volumes/AIDRIVE/sample2/telegram-bridge/` (운영 X)
-- 영감 출처: https://www.gpters.org/nocode/post/claude-code-telegram-automatic-iye3YWTeNJoYxhz
+- 참고 prototype: `/Volumes/AIDRIVE/참고 prototype/telegram-bridge/` (운영 X)
+- 영감 출처: 

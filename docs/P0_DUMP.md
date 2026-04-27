@@ -62,7 +62,7 @@ except Exception as e:
 | `Agent(run_in_background=true)` tool_use | ≥ 10건 |
 | Silent turn (텍스트 응답 0 또는 도구 결과만) | ≥ 5건 |
 | 정상 tool_use·tool_result 페어 | ≥ 100건 (스키마 일반화용) |
-| Turn 종료 6가지 상황 (글쓴이 분류) | 각 ≥ 1건 (§매핑검증 참조) |
+| Turn 종료 6가지 상황 (기존 분류) | 각 ≥ 1건 (§매핑검증 참조) |
 
 passive 캡처 + active 라벨 데이터 합산. **위 6개 모두 충족** = P1 진입 조건.
 

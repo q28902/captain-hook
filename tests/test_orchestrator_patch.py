@@ -162,7 +162,7 @@ async def main():
         fx_result("end_turn", is_error=True),
     ], expect_replies=1, expect_marker="비정상 종료")
 
-    # 6. SILENT skip — 글쓴이 가드
+    # 6. SILENT skip — 기본 가드
     await run("6) SILENT skip (guard)", [
         fx_assistant_tool_use("Bash", {"command": "ls"}),
         fx_message_delta("tool_use"), fx_result("end_turn"),

@@ -18,9 +18,9 @@ claude-code-telegram 봇을 **Claude의 의지에 의존하지 않는 외부 강
 
 자세한 분석: [`docs/PROBLEM.md`](docs/PROBLEM.md).
 
-## 영감과 차이 — gpters.org Stop Hook 글
+## 영감과 차이 — 외부 레퍼런스 Stop Hook 글
 
-[원문](https://www.gpters.org/nocode/post/claude-code-telegram-automatic-iye3YWTeNJoYxhz)의 핵심 통찰:
+[원문]()의 핵심 통찰:
 
 > "Claude의 의지에 의존하는 모든 방식은 신뢰할 수 없다. 시스템 강제만이 100% 보장."
 
@@ -50,14 +50,14 @@ claude-code-telegram 봇을 **Claude의 의지에 의존하지 않는 외부 강
 - **P1**: 봇 stream-json 파서 → cct-notifier 자동 등록 (난이도 중, 가치 최상)
 - **P2**: 빈 응답·조용한 종료 자동 가시화 (난이도 낮, 가치 중)
 - **P3**: 봇 외부에서 호출 가능한 알림 HTTP 엔드포인트 (난이도 낮, 가치 중)
-- **P4**: Stop Hook 스크립트 settings.json 등록 (sample2의 hook 부분만 차용)
+- **P4**: Stop Hook 스크립트 settings.json 등록 (참고 prototype의 hook 부분만 차용)
 
-## 비채택 — 왜 sample2 본체를 쓰지 않나
+## 비채택 — 왜 참고 prototype 본체를 쓰지 않나
 
-sample2의 bridge.js daemon = 우리 환경에선 봇 자체가 같은 역할. 별도 운영 = 중복·자원 낭비. Hook 스크립트(`check-completion-notification.py`)만 P4에서 흡수.
+참고 prototype의 bridge.js daemon = 우리 환경에선 봇 자체가 같은 역할. 별도 운영 = 중복·자원 낭비. Hook 스크립트(`check-completion-notification.py`)만 P4에서 흡수.
 
 ## 관련 자산
 
 - 봇 본체: `/Volumes/AIDRIVE/claude-code-telegram/`
 - cct-notifier: `~/Projects/claude/cct-notifier/`
-- sample2 참고용 보존: `/Volumes/AIDRIVE/sample2/telegram-bridge/`
+- 참고 prototype 보존: `/Volumes/AIDRIVE/참고 prototype/telegram-bridge/`

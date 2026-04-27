@@ -37,7 +37,7 @@ D와 다른 패턴:
 
 트리거 후보: rate limit, 네트워크 단절, OOM, 시간 초과, 외부 kill.
 
-처리: P1 v3.1 captain.silent_detector_decide의 API_ERROR 분기 — 글쓴이 가드 무시 + "🛑 Claude turn 비정상 종료" 강제 푸시. RISKS.md R12 + SCHEMA.md API_ERROR 페이로드 참조.
+처리: P1 v3.1 captain.silent_detector_decide의 API_ERROR 분기 — 기본 가드 무시 + "🛑 Claude turn 비정상 종료" 강제 푸시. RISKS.md R12 + SCHEMA.md API_ERROR 페이로드 참조.
 
 ### D) 백그라운드 실패의 침묵 ⚠️ 실무 페인포인트 1번
 - 사용자: "harness 돌려둬"
@@ -53,7 +53,7 @@ D와 다른 패턴:
 - `exit_code 잡지 못함` (PID 단순 사라짐) → ❓ "비정상 종료 가능성" 알림
 - 위 3분기는 cct-notifier 또는 wrapper 레이어에서 보장 필요
 
-## 왜 sample2의 Stop Hook으로는 못 푸는가
+## 왜 참고 prototype의 Stop Hook으로는 못 푸는가
 
 Stop Hook은 **turn 종료 시점**에 발화. 백그라운드 작업 완료 시점은 turn 종료 *후*. 두 시점 사이엔 Claude도 Hook도 호출되지 않음 → Hook 무의미.
 
@@ -61,7 +61,7 @@ Stop Hook은 A) 패턴의 "turn 종료 자체 알림"은 보장하나, *내용*�
 
 ## 진짜 해결책의 조건
 
-1. **Claude의 의지에 의존하지 말 것** (gpters 글의 통찰 그대로)
+1. **Claude의 의지에 의존하지 말 것** (외부 레퍼런스의 통찰 그대로)
 2. 백그라운드 작업 *시작* 시점에 자동 등록 (Claude 등록 망각 무력화)
 3. 백그라운드 작업 *완료* 시점에 외부 daemon이 polling 알림 (cct-notifier 활용)
 4. Turn 종료 시 빈 응답·조용한 종료 자동 가시화

@@ -214,7 +214,7 @@ def silent_detector_decide(state: TurnState, classification: TurnEnd) -> Optiona
     """
     try:
         if classification == TurnEnd.TURN_END_API_ERROR:
-            # API_ERROR는 글쓴이 가드 무시 — turn 자체가 강제 종료라 알림 필수
+            # API_ERROR는 기본 가드 무시 — turn 자체가 강제 종료라 알림 필수
             return {
                 "text": "🛑 Claude turn 비정상 종료 — API/SDK 에러. 응답 누락 가능. 마지막 도구 호출이 잘렸을 수 있음.",
                 "level": "error",
@@ -222,7 +222,7 @@ def silent_detector_decide(state: TurnState, classification: TurnEnd) -> Optiona
         if classification not in (TurnEnd.TURN_END_SILENT, TurnEnd.TURN_END_TOOL_ERROR):
             return None
         if state.text_response_count > 0:
-            return None  # 글쓴이 가드
+            return None  # 기본 가드
         # P1.6 self-noise 가드: SILENT인데 사용자 의도 도구 0건이면 = captain 자체 분석 turn → push X
         if classification == TurnEnd.TURN_END_SILENT and not state.last_user_tool_name:
             return None

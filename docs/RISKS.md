@@ -70,20 +70,20 @@ P0 stream-json 덤프에 API key·파일 내용·사용자 메시지 포함 가�
 
 봇 프로세스 죽음 / cct-notifier 죽음 / 디스크 풀 / OOM / 네트워크 단절 시 알림 0.
 
-"100% 보장"은 시스템 boundary 안에서만 성립. 글쓴이도 동일 한계 — 재부팅 시 Bridge daemon 자동구동 누락 사고를 글에서 명시.
+"100% 보장"은 시스템 boundary 안에서만 성립. 기존 방식도 동일 한계 — 재부팅 시 Bridge daemon 자동구동 누락 사고를 글에서 명시.
 
 **처리 시점: P5 — heartbeat 기반 메타 알림**
 
 - captain-hook 컴포넌트(봇, cct-notifier)가 1분마다 heartbeat 파일 touch
 - 별도 경로(SMS, 보조 봇 토큰, 이메일) 워치독이 N분 heartbeat 미수신 시 "down" 알림
-- 핵심: **메인 봇과 다른 채널이어야 함**. 같은 봇으로 보내면 봇 죽었을 때 그 알림도 무력 (글쓴이 Bridge 단일경로 한계와 동형)
+- 핵심: **메인 봇과 다른 채널이어야 함**. 같은 봇으로 보내면 봇 죽었을 때 그 알림도 무력 (기존 Bridge 단일경로 한계와 동형)
 
 P5는 P1~P4 안정화 후 진입.
 
 ## R10 — AskUserQuestion 빈 응답 자동 생성 (SDK 한계, 2026-04-26 active 라벨 결과)
 
 stdin 막힘 → SDK 자동 빈 응답 → 사용자에 질문 노출 0.
-글쓴이의 last_assistant_summary 강제 푸시도 이 패턴에선 무력 — 푸시할 텍스트 자체가 빈 문자열.
+기존 방식의 last_assistant_summary 강제 푸시도 이 패턴에선 무력 — 푸시할 텍스트 자체가 빈 문자열.
 
 A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 
@@ -348,7 +348,7 @@ captain은 P1.7-ext로 plain 보장이라 Markdown fallback 불필요. 노이즈
 
 **처리 (P1 v3.1)**:
 - `silent_detector_decide`에 API_ERROR 분기 추가
-- 글쓴이 가드(text_response_count) **무시** — turn 자체가 강제 종료라 알림 필수
+- 기본 가드(text_response_count) **무시** — turn 자체가 강제 종료라 알림 필수
 - 푸시 메시지: "🛑 Claude turn 비정상 종료 — API/SDK 에러. 응답 누락 가능. 마지막 도구 호출이 잘렸을 수 있음."
 - unit test 5번 갱신 (replies=1 + 비정상 종료 마커)
 
@@ -362,7 +362,7 @@ captain은 P1.7-ext로 plain 보장이라 Markdown fallback 불필요. 노이즈
 | 04-27 진입 점검 중 | API/SDK 에러 | ✅ |
 
 4건 누적. R12 push 분기가 captain-hook 작업에서 가장 자주 trigger되는 신호.
-글쓴이 Stop Hook 방식으론 last_assistant_summary 빈 문자열이라 푸시 거리 자체 0.
+기존 Stop Hook 방식으론 last_assistant_summary 빈 문자열이라 푸시 거리 자체 0.
 SCHEMA.md 4' 항목 🟢 등급 자연 검증 완료.
 
 ## R11 — Self-noise overwrite (P1 v1 결함, 2026-04-26 라이브 검증 결과)

@@ -34,11 +34,11 @@
   - turn 종료 시 텍스트 응답 0건 감지
   - 마지막 도구 호출 요약을 텔레그램에 강제 푸시
 
-#### silent_detector 필수 조건 (글쓴이 가드 흡수 + AskUserQuestion 분기)
+#### silent_detector 필수 조건 (기본 가드 흡수 + AskUserQuestion 분기)
 
 - turn 종료 시 텍스트 응답 0건 → 마지막 도구 + 결과 요약 강제 푸시
 - 단, 같은 turn 안에서 텔레그램 응답이 이미 1건 이상 송신됐으면 skip (중복 방지)
-- 글쓴이 Stop Hook `has_telegram_send_in_turn()` 가드와 동등 기능
+- 기존 Stop Hook `has_telegram_send_in_turn()` 가드와 동등 기능
 - 미구현 시 정상 turn마다 알림 2건 → 노이즈 폭발 → 시스템 자체 신뢰도 붕괴
 
 ##### AskUserQuestion 분기 (2026-04-26 P0 active 라벨 결과)
@@ -72,11 +72,11 @@ SCHEMA.md 분석에 따르면 2번(AskUserQuestion)과 5번(silent)은 SDK 신�
 - stream-json 이벤트 도착마다 패턴 매칭
 - turn 종료 → 등록된 작업 N개 텔레그램 메시지에 첨부
 
-## 2층 — Stop Hook 백업 (sample2 차용)
+## 2층 — Stop Hook 백업 (참고 prototype 차용)
 
 **위치**: `~/.claude/settings.json`
 
-봇 미경유 직접 CLI 사용 시 발화. sample2의 `check-completion-notification.py` 일부 차용 — 단 **bridge daemon은 사용하지 않음**. 직접 cct-notifier 또는 봇 HTTP 엔드포인트(P3) 호출.
+봇 미경유 직접 CLI 사용 시 발화. 참고 prototype의 `check-completion-notification.py` 일부 차용 — 단 **bridge daemon은 사용하지 않음**. 직접 cct-notifier 또는 봇 HTTP 엔드포인트(P3) 호출.
 
 ### settings.json 등록 형태
 
@@ -131,7 +131,7 @@ SCHEMA.md 분석에 따르면 2번(AskUserQuestion)과 5번(silent)은 SDK 신�
 - **입력**: `tool_use.input.questions[].{question, options}`
 - **출력**: 텔레그램 메시지 — 옵션을 inline keyboard로 (또는 number prefix 텍스트 fallback)
 - **사용자 응답 수신**: 기존 MessageHandler에 question_id 매칭 hook → 다음 turn user 메시지로 봇이 주입
-- **세션 매칭 패턴**: 글쓴이 sample2 Bridge daemon의 `reply_to_message.message_id` ↔ question_id 매칭 메커니즘과 동일 (참고용으로 sample2 코드 활용)
+- **세션 매칭 패턴**: 참고 prototype Bridge daemon의 `reply_to_message.message_id` ↔ question_id 매칭 메커니즘과 동일 (참고용으로 참고 prototype 코드 활용)
 
 
 - `src/captain_hook/stream_parser.py` 작성 (실측 스키마 기준)
@@ -159,19 +159,19 @@ SCHEMA.md 분석에 따르면 2번(AskUserQuestion)과 5번(silent)은 SDK 신�
   - captain-hook은 그 인터페이스의 첫 사용자로 외부 패키지화
   - upstream 안 깨지고, 다른 사용자도 같은 문제 풀 수 있는 공개 레이어로 진화
   - 글감: "수단이 다름" 비교표 자체가 이미 PR description으로 사용 가능
-- `hooks/notify_stop.py` 작성 (sample2 차용)
+- `hooks/notify_stop.py` 작성 (참고 prototype 차용)
 - `~/.claude/settings.json`에 등록 (CLI 직접 사용 백업)
 
 ### Phase 5 — P5: heartbeat 기반 메타 알림 (R9 대응)
 - captain-hook 컴포넌트(봇, cct-notifier)가 1분마다 heartbeat 파일 touch
 - 별도 경로(SMS, 보조 봇 토큰, 이메일) 워치독이 N분 heartbeat 미수신 시 "down" 알림
-- 핵심: **메인 봇과 다른 채널이어야 함**. 같은 봇으로 보내면 봇 죽었을 때 그 알림도 무력 (글쓴이 Bridge 단일경로 한계와 동형)
+- 핵심: **메인 봇과 다른 채널이어야 함**. 같은 봇으로 보내면 봇 죽었을 때 그 알림도 무력 (기존 Bridge 단일경로 한계와 동형)
 - P1~P4 안정화 후 진입
 - 자세한 근거: [`docs/RISKS.md`](RISKS.md) R9
 
 ## 비채택 메모
 
-- **sample2 bridge.js daemon 운영 X** — 봇이 동등 역할
+- **참고 prototype bridge.js daemon 운영 X** — 봇이 동등 역할
 - **새 봇 토큰 X** — 기존 봇 강화로 단일화 유지
 - **MCP 텔레그램 도구 X** — Claude 의지 의존 패턴 회귀
 

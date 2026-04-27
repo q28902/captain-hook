@@ -29,7 +29,7 @@
 
 ## 6분류 매핑 — confidence 등급
 
-| # | 글쓴이 분류 | SDK 신호 | 등급 |
+| # | 기존 분류 | SDK 신호 | 등급 |
 |---|---|---|---|
 | 1 | 명시적 완료 | `stop_reason: "end_turn"` + `terminal_reason: "completed"` | 🟡 (6번과 구분 미확인) |
 | 2 | AskUserQuestion | message_delta `stop_reason: "tool_use"` + 마지막 `tool_use.name == "AskUserQuestion"` (5번과 신호 동일, name으로 분기) | 🟢 |
@@ -151,7 +151,7 @@ PING-PONG 1쌍 + 분석 2 turn = 5건. turn당 평균 ~1.5건 push (정확한 �
 
 판정 휴리스틱: `result.is_error == true` OR `result.terminal_reason == null`.
 
-P1 v3.1 처리: silent_detector_decide에 API_ERROR 분기 추가 — 글쓴이 가드 무시 + "🛑 Claude turn 비정상 종료" 푸시. RISKS.md R12 참조.
+P1 v3.1 처리: silent_detector_decide에 API_ERROR 분기 추가 — 기본 가드 무시 + "🛑 Claude turn 비정상 종료" 푸시. RISKS.md R12 참조.
 
 ## caller.type 실측 (🟡 분기 신호로 무력)
 
@@ -169,7 +169,7 @@ P1 v3.1 처리: silent_detector_decide에 API_ERROR 분기 추가 — 글쓴이 
 - **ASK_USER는 도구 호출 자체가 trigger** — `tool_use.name == "AskUserQuestion"` 발견 즉시 `any_ask_user_question = True`
 - 누적도, 마지막 의존도 아님 — *발생 = 분류*
 
-→ silent_detector의 글쓴이 가드(`text_response_count > 0이면 skip`)는 ASK_USER에 적용 X. ASK_USER는 항상 푸시.
+→ silent_detector의 기본 가드(`text_response_count > 0이면 skip`)는 ASK_USER에 적용 X. ASK_USER는 항상 푸시.
 
 ## Self-observation noise — dump-of-dump 현상
 

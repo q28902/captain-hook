@@ -5,7 +5,7 @@
 핵심 미션 4건 모두 라이브 검증 통과:
 
 1. **봇 내부 누락 검출** — P0/P1 (SILENT/TOOL_ERROR/ASK_USER/API_ERROR 분기) ✅
-2. **글쓴이 미해결 영역 보장** — R12/R10/false-positive 가드 ✅
+2. **기존 방식 미해결 영역 보장** — R12/R10/false-positive 가드 ✅
 3. **외부 시스템 → captain 채널** — P3 라이브 통과 ✅
 4. **진단 인프라** — R10~R19 누적 박제 + INTEGRATE.md 표준 가이드 ✅
 
@@ -32,7 +32,7 @@ ProductionConfig 한도 99999.0 적용:
 - `claude_max_cost_per_request`: 2.0 → 99999.0
 - 봇 reminder budget 표시: $0/$2 → $0/$99999
 
-### 글쓴이 Stop Hook 대비 가치
+### 기존 Stop Hook 대비 가치
 
 - bg SILENT 추가 보장
 - ASK_USER forwarding 추가 보장 (P1.7-ext)

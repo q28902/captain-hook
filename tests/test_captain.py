@@ -6,7 +6,7 @@
 3. TURN_END_ASK_USER (2번 ask_user_forwarding 푸시)
 4. TURN_END_TOOL_ERROR (4번 silent_detector 푸시 + stderr tail)
 5. TURN_END_API_ERROR (4' 푸시 X — silent_detector 대상 아님)
-6. silent skip (글쓴이 가드: text_response_count > 0)
+6. silent skip (기본 가드: text_response_count > 0)
 
 Run: python3 tests/test_captain.py
 """
@@ -211,7 +211,7 @@ def main() -> int:
         print("       [FAIL] API_ERROR push missing (R12 regression)")
         fails += 1
 
-    # 6) SILENT skip — 글쓴이 가드 (text_response_count > 0)
+    # 6) SILENT skip — 기본 가드 (text_response_count > 0)
     ok, _, _, silent, _ = run_branch(
         "6) SILENT skip (guard)",
         [
