@@ -1,0 +1,65 @@
+name: 🐛 Bug report
+description: captain-hook 결함·실측 회귀
+labels: ["bug", "triage"]
+body:
+  - type: input
+    id: r-number
+    attributes:
+      label: 관련 R 번호 (있으면)
+      placeholder: "R20, R21 등"
+
+  - type: dropdown
+    id: branch
+    attributes:
+      label: 영향 분기
+      options:
+        - SILENT (P1.6 가드)
+        - TOOL_ERROR
+        - ASK_USER (P1.7-ext)
+        - API_ERROR (R12)
+        - NORMAL
+        - P3 /notify endpoint
+        - 기타 (description 참조)
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 증상
+      placeholder: |
+        - 어떤 분기에서 push 누락/오발화/노이즈?
+        - decision log (`dumps/<date>.p1_decisions.jsonl`) tail 결과
+        - 텔레그램 도착 여부 + 시간
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: 환경
+      placeholder: |
+        - 봇 fork SHA: `git rev-list --count fa008b3..HEAD`
+        - captain-hook 버전 (commit SHA)
+        - OS / Python / Claude Agent SDK 버전
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 재현 단계
+      placeholder: |
+        1. ...
+        2. ...
+        3. 기대 vs 실제
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 로그 (가능하면)
+      placeholder: |
+        - /private/tmp/claude-telegram-bot.err (captain stderr)
+        - /private/tmp/claude-telegram-bot.log (봇 stdout)
+        - dumps/<date>.p1_decisions.jsonl 해당 라인
+      render: shell

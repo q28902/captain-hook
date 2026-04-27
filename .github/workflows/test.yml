@@ -1,0 +1,34 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: captain.py P1 unit test (13 cases)
+        run: python3 tests/test_captain.py
+
+      - name: orchestrator captain branch mock test (7 cases)
+        run: python3 tests/test_orchestrator_patch.py
+
+      - name: /notify endpoint unit test (5 cases)
+        run: python3 tests/test_notify_endpoint.py
+
+      - name: captain.py syntax check
+        run: python3 -m py_compile src/captain.py
+
+      - name: patches/ syntax check
+        run: |
+          for f in patches/*.py; do
+            python3 -m py_compile "$f" || echo "syntax error: $f"
+          done

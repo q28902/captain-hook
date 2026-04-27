@@ -119,6 +119,32 @@ A 패턴의 하위 패턴(**A-AUQ**)으로 분류. PROBLEM.md A에 cross-link.
 | 18 | 봇 ProductionConfig가 .env 강제 override | environments.py 직접 수정 또는 사전 확인 가이드 |
 | 19 | 텔레그램이 가이드 명령의 `\|\|`를 spoiler 마크다운으로 해석 | if/then/fi 문법 사용 + INTEGRATE.md §5 보강 |
 | 20 | TOOL_ERROR 분기 P1.6 가드 미적용 (false-positive) | v1.x 유지보수 — 자연 누적 평가 후 결정 |
+| 21 | SDK 내부 스키마 의존 (silent break 위험) | v1.x — 회귀 watchdog (CI canary unit test) |
+| 22 | bot.db 평문 키 잔존 | v1.x — sqlite sanitize 스크립트 |
+
+## R21 — SDK 내부 스키마 의존 (silent break 위험, 2026-04-27 박제)
+
+증상:
+- captain은 Claude Agent SDK 내부 필드 (`stop_reason` / `terminal_reason` / `tool_use_result` / `caller.type` 등)에 의존
+- Anthropic이 SDK 업데이트 시 필드명·구조 변경 → captain silent break 가능
+- 사용자는 푸시 누락이 분류 결함인지 SDK 변경인지 구분 불가
+
+처리 (v1.x):
+- `tests/test_schema_watchdog.py` 신규: 핵심 필드 5종이 실측 dump에서 발견되는지 자동 검증
+- CI에 매일 cron 실행 (또는 매 PR)
+- 필드 부재 시 SDK_BREAK 알림
+
+## R22 — bot.db 평문 키 잔존 (R13 후속, 2026-04-27 박제)
+
+증상:
+- R13 사고에서 봇 시스템 프롬프트 평문 키 노출 후 sanitize됐지만, `bot.db` (SQLite)에 audit_log·message 테이블로 평문 잔존 가능
+- 외부 유출 0이라 보류 결정 (R13 위험도 재평가)
+- 단 db 백업·공유·debug 시 노출 위험
+
+처리 (v1.x):
+- `scripts/sanitize_botdb.py` 신규: 봇 SQLite 안 메시지·audit_log에서 redact 패턴 6종 적용
+- 백업 + dry-run + apply 3단계
+- 운영 시 cron 권장
 
 ## R20 — TOOL_ERROR 분기 P1.6 가드 미적용 (2026-04-27 v1.0 마감 후 발견)
 

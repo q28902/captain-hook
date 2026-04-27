@@ -1,5 +1,8 @@
 # Captain Hook v1.0
 
+[![tests](https://github.com/q28902/captain-hook/actions/workflows/test.yml/badge.svg)](https://github.com/q28902/captain-hook/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > **claude-code-telegram 봇을 강제 100% 가시화 레이어로 진화시키는 add-on.**
 > Claude의 응답 누락·백그라운드 작업 침묵·강제 종료를 외부에서 push.
 
@@ -164,9 +167,15 @@ captain-hook/
 
 ## 기여
 
-- 이슈 트래커: [Issues](https://github.com/q28902/captain-hook/issues)
-- 라이선스: [MIT](LICENSE)
-- 외부 PR 환영. 단 v1.x 유지보수 우선 (R20 TOOL_ERROR 가드 / bot.db sanitize / SDK 스키마 watchdog).
+- **절차**: [`CONTRIBUTING.md`](CONTRIBUTING.md) — fork → branch → test → PR 4단계
+- **이슈 템플릿**: bug / feature 2종 (`.github/ISSUE_TEMPLATE/`)
+- **머지 기준**: CI green ([`tests` workflow](.github/workflows/test.yml)) + reviewer 승인
+- **현재 reviewer / maintainer**: [@q28902](https://github.com/q28902)
+- **v1.x 우선순위** (Issues 라벨 `v1.x`):
+  - **R20** TOOL_ERROR 분기 P1.6 가드 확장 (false-positive 차단)
+  - **R21** SDK 스키마 watchdog (`tests/test_schema_watchdog.py`)
+  - **R22** bot.db 평문 sanitize 스크립트
+- **라이선스**: [MIT](LICENSE)
 
 ---
 

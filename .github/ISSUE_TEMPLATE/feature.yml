@@ -1,0 +1,45 @@
+name: ✨ Feature / Enhancement
+description: 신규 분기 / 가드 / 외부 통합 / 위험 박제
+labels: ["feature", "triage"]
+body:
+  - type: dropdown
+    id: phase
+    attributes:
+      label: 영향 Phase
+      options:
+        - P0 (dump 인프라)
+        - P1 (분류·결정)
+        - P2 (silent 요약)
+        - P3 (외부 endpoint)
+        - P4 (upstream PR)
+        - P5 (heartbeat)
+        - 기타 / cross-phase
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 동기 / 누락 패턴
+      placeholder: |
+        - 현재 어떤 누락 패턴이 안 잡힘?
+        - 글쓴이 Stop Hook 또는 외부 봇이 처리하는 부분 중 captain 미커버?
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: 설계 제안
+      placeholder: |
+        - captain.py 또는 patches/ 변경 위치
+        - 분기 우선순위 변동 (있을 시)
+        - 위험 R 시리즈 신규 박제 필요 시 명시
+
+  - type: textarea
+    id: tests
+    attributes:
+      label: 검증 방법
+      placeholder: |
+        - 신규 unit test fixture
+        - 라이브 검증 시나리오 (텔레그램 호출 → 도착 확인)
