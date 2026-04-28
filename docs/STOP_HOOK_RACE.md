@@ -116,7 +116,3 @@ state file이 망가지거나 state·transcript 동기 깨지는 사고 대비. 
 - transcript 파일 mtime 비교로 "변동 있을 때만 폴링" 최적화 (현재는 무조건 폴링)
 - `state.last_uuid` 외 `state.last_block_uuid`도 분리 저장해 "block 후 같은 위반 재발" 케이스 정확 추적
 - harness 측 fix: harness가 hook spawn 전 transcript fsync 보장 (Anthropic 측 변경 필요)
-
-## 9. 회고
-
-CLAUDE.md "메타 규칙 — 법칙 도입 표준 절차"(2026-04-28 박제) 1차 적용 사례. 텍스트 룰 + Stop hook 동시 작성 → 작성 직후 race 발견 → 즉시 패치. **enforcement 메커니즘 동시 작성 의무**가 작동하면 이런 이슈는 회피 못 해도 빠르게 수정 사이클로 진입.

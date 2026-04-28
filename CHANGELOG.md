@@ -37,10 +37,6 @@
 - 상세 분석: [`docs/STOP_HOOK_RACE.md`](docs/STOP_HOOK_RACE.md)
 - 표준 구현: [`hooks/table-guard.py`](hooks/table-guard.py) — 다른 Stop hook 작성 시 race 골격 복제 권장
 
-### 메타
-
-CLAUDE.md "메타 규칙 — 법칙 도입 표준 절차"(2026-04-28 박제) 1차 적용 사례. 텍스트 룰 + Stop hook 동시 작성 → 작성 직후 race 발견 → 즉시 패치. enforcement 메커니즘 동시 작성 의무가 사이클을 빠르게 만들었다.
-
 ---
 
 ## v1.0 (2026-04-27 정식 마감)
