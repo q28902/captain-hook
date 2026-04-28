@@ -1,10 +1,10 @@
 # Captain Hook — SESSION HANDOFF
 
-**Repo**: `q28902/captain-hook` (private)
+**Repo**: `q28902/captain-hook` (public)
 **로컬**: `~/Projects/claude-captain-hook/`
-**상태**: Phase 1 착수 대기
-**최종 업데이트**: 2026-04-26
-**완성 목표**: 2026-05-02 이전 (news_intel 재개 전 1주일)
+**상태**: v1.1 배포 (Stop Hook race condition 박제 + 표준 처방)
+**최종 업데이트**: 2026-04-28
+**완성 목표**: 달성 — v1.0 (2026-04-27) → v1.1 (2026-04-28)
 
 ---
 

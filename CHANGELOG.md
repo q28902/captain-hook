@@ -1,5 +1,48 @@
 # CHANGELOG
 
+## v1.1 (2026-04-28) — Stop Hook Race Condition 박제 + 표준 처방
+
+### 발견
+
+`/Volumes/AIDRIVE/claude-code-telegram/hooks/table-guard.py` (CLAUDE.md "표 출력 안전" 규칙 자동 게이트) 가동 직후 **race condition** 노출:
+
+- 훅이 fire되는 순간 transcript JSONL flush가 아직 끝나지 않아 직전 turn entry를 "마지막 메시지"로 인식
+- 결과: 깨끗한 응답에도 옛 turn의 위반을 잡고 block 송출
+- block → 재작성 → 동일 race → 또 block → **무한 루프 위험**
+
+### 처방 (이중화)
+
+1. **`stop_hook_active` 플래그 체크** — harness가 재진입 신호 보내면 즉시 exit. 무한 루프 차단.
+2. **UUID + end_turn + 폴링 패턴** — 표준 구현으로 박제:
+   - state file (`/tmp/table-guard-state.json`)에 `last_uuid` 영구 저장
+   - 훅 fire 시 transcript에서 `stop_reason="end_turn"` AND `uuid != state.last_uuid`인 entry 폴링 검색 (100ms 간격, 최대 3초)
+   - 새 entry 등장 즉시 검사. 못 찾으면 silent pass (사용자 가두지 않음)
+   - state는 검사 직전·block 송출 직전 모두 갱신 → 재진입 시 즉시 통과
+   - multi-part turn(text→tool_use→text)은 마지막 end_turn entry만 검사
+
+### 검증
+
+7개 시나리오 pipe-test 전부 통과 (fresh clean / race scenario / 진짜 위반 / 재진입 / stop_hook_active / mid-turn tool_use / skip marker).
+
+### 평소 지연 vs 최악 케이스
+
+| 시나리오 | 지연 |
+|---|---|
+| 정상 flush | ~수십 ms |
+| race 200~500ms | 200~500 ms |
+| degenerate timeout | 3000 ms → silent pass |
+
+### 추가 자료
+
+- 상세 분석: [`docs/STOP_HOOK_RACE.md`](docs/STOP_HOOK_RACE.md)
+- 표준 구현: [`hooks/table-guard.py`](hooks/table-guard.py) — 다른 Stop hook 작성 시 race 골격 복제 권장
+
+### 메타
+
+CLAUDE.md "메타 규칙 — 법칙 도입 표준 절차"(2026-04-28 박제) 1차 적용 사례. 텍스트 룰 + Stop hook 동시 작성 → 작성 직후 race 발견 → 즉시 패치. enforcement 메커니즘 동시 작성 의무가 사이클을 빠르게 만들었다.
+
+---
+
 ## v1.0 (2026-04-27 정식 마감)
 
 핵심 미션 4건 모두 라이브 검증 통과:
