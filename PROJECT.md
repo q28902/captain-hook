@@ -29,7 +29,7 @@ stack: [stream-json 파서]
 > `AID:PROJECTS.md` 에서 이관(2026-08-24). 원문은 `AID:PROJECTS.legacy.md` 에 동결.
 
 - [ ] 미커밋 5건 처리 판단 — 커밋할지 버릴지 (P-001 watchdog 포함)
-- [ ] `com.captain.wakeup-fire` 재적재 여부 판단 — 끌 거면 P-001 을 폐기 처리해야 앞뒤가 맞는다
+- [ ] **`com.captain.wakeup-fire` — plist 자체가 없다** · 2026-09-03 실측: `~/Library/LaunchAgents` 에 `com.captain.*` 0건이고 `launchctl print` 도 「없음」이다. 저장소에 있는 것은 스크립트뿐(`scripts/wakeup_watchdog.py`) — **재적재할 대상이 존재하지 않는다.** 되살리려면 plist 를 새로 만들어야 하고, 그건 재적재가 아니라 신설이다. P-001 폐기 처리와 묶어 한 번에 정한다. (2026-09-03 재범위) | 해소: 경로 생김: /Users/inseyeol/Library/LaunchAgents/com.captain.wakeup-fire.plist
 - [ ] **P-004** Transcript fsync 보강 (Stop hook race 후속) — *보류 상태*
 - [ ] **P-005** Outbound 도구 호출(WebFetch/Curl) silent fail 검출 — *상태 표기 없음*
 - ℹ️ 위 P-00N 은 `PATCHTODO.md`(158줄)에서 흡수했다. **`PATCHTODO` 는 CLAUDE.md 가 이름까지 지목해 금지한 todo 분산처**인데 실제로 운용되고 있었다(2026-08-11 감사 후속 발견 — 원 감사에서는 core 문서가 아니라 놓쳤다). 완료분 P-001·P-002·P-003 ✅ / P-006 폐기 는 이력이므로 그 파일에 남긴다. **새 미결은 여기에만 적을 것.**
