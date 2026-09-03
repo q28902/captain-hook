@@ -107,9 +107,13 @@ claude-code-telegram 봇에 stream-json 파서 추가 → Claude의 백그라운
 - budget reminder $0/$2 → $0/$99999
 
 **다음 회차 후보** (별도):
-- bot.db 평문 잔존 분석 (외부 유출 0이라 보류)
-- 봇 self-restart 트리거 (R12 마찰 해소)
+- bot.db 평문 잔존 분석 (외부 유출 0이라 보류) — `PATCHTODO.md` P-002
+- 봇 self-restart 트리거 (R12 마찰 해소) — `PATCHTODO.md` P-003
 - captain 분기와 P3 알림 통합 dump 분리
+- **🔴 Inter-turn watchdog (ScheduleWakeup silent fail) — `PATCHTODO.md` P-001** (2026-04-29 세열님 직접 지적)
+- Outbound 도구 silent fail 검출 — `PATCHTODO.md` P-005
+
+전체 후보 대기열·진단 사례: [`PATCHTODO.md`](PATCHTODO.md)
 
 ### (이전) 1주일 안정화 완료 + P3 진입 점검 (2026-04-27)
 

@@ -15,3 +15,8 @@
 __pycache__/
 dumps/
 work/
+
+# 되돌림용 사본 — 이력은 git 이 갖는다 (2026-09-03)
+*.bak
+*.bak_*
+*.backup*

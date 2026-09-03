@@ -13,6 +13,7 @@ stack: [stream-json 파서]
 ---
 
 ## 결정 (append only)
+- 2026-09-02 | [declared] — → 보존 | 초기 등록(5차 승인, 근거 PROJECT.md 최초 커밋(~/Projects/claude-captain-hook)) · 이 날짜는 선언일이 아니라 **정본이 처음 버전관리에 들어온 날**이다(2026-09-02 일괄 커밋). 선언 자체는 그 이전이나 시행일 근거가 이것뿐이다.
 - 2026-04-26 | sample2 bridge.js 검토 → 단독 운용 거부 → Captain Hook 신설 결정 | 근거: 07_MEMORY_MAP.md §G 일일기록 타임라인
 - 2026-04-27 | 누적 위험 R10~R22 처리. ProductionConfig 강제 override 회피(R18) · 텔레그램 spoiler 해석 차단(R19) · 단일 인스턴스 검증(R16) | 근거: 07_MEMORY_MAP.md §G 일일기록 타임라인
 - 2026-04-28 | v1.1 Stop hook race 표준 처방. Aki 자동 호출 인프라 1차 마감(이틀 뒤 폐기됨). 채용알리미 패치 4건 | 근거: 07_MEMORY_MAP.md §G 일일기록 타임라인
@@ -24,6 +25,7 @@ stack: [stream-json 파서]
 
 ## 대기열
 
+- [ ] **「조용한 종료」 오판 — 실행 경로가 죽어 있어 지금은 무해** · 2026-09-03 실측: `DISABLE_CAPTAIN_HOOK=true` 가 **두 plist 모두**에 있고(`com.inseyeol.claude-code-telegram`·`com.inseyeol.waki`), `sdk_integration.py:1560` 이 그 값으로 `_captain_available = False` 를 준다 — `captain.py` 의 분류 코드는 어느 채널에서도 실행되지 않는다. **버그는 실재하지만 지금 아무 일도 안 한다.** 죽은 코드를 검증 없이 고치면 새 오류만 심는다 — 되살릴 때 먼저 고친다. 원래 진단: `captain.py:159-162` 가 `stop_reason="tool_use"` 를 보존해 뒤에 텍스트가 와도 안 덮고, 그 값으로 `TURN_END_SILENT` 가 나간다. | 해소: grep "DISABLE_CAPTAIN_HOOK" /Users/inseyeol/Library/LaunchAgents/com.inseyeol.waki.plist
 > `AID:PROJECTS.md` 에서 이관(2026-08-24). 원문은 `AID:PROJECTS.legacy.md` 에 동결.
 
 - [ ] 미커밋 5건 처리 판단 — 커밋할지 버릴지 (P-001 watchdog 포함)

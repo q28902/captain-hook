@@ -27,7 +27,29 @@
 
 ## P-001 — Inter-turn watchdog (ScheduleWakeup silent fail)
 
-**우선순위**: 🔴 높음 (사용자 직접 지적, 2026-04-29)
+**상태**: ✅ **옵션 A 구현 완료 (2026-05-07)** — PreToolUse 가로채기 + launchd watchdog daemon.
+
+**구현 내역**:
+- `hooks/wakeup-promise.py` — ScheduleWakeup PreToolUse hook. 호출 가로채 ledger 등록 + permissionDecision=deny (어차피 harness silent-fail이라 무해)
+- `scripts/wakeup_watchdog.py` — 60초 polling daemon. expected_fire_at 도래 시 secretarybot Telegram sendMessage
+- `~/Library/LaunchAgents/com.captain.wakeup-fire.plist` — `StartInterval=60`, RunAtLoad
+- `/Volumes/AIDRIVE/.claude/settings.json` PreToolUse matcher `ScheduleWakeup` 등록
+- ledger: `/Volumes/AIDRIVE/captain-hook-state/wakeup_promises.jsonl` (append-only, event=promise/fired/failed)
+
+**검증 통과**:
+- ScheduleWakeup payload → deny + ledger 박힘
+- 다른 도구 payload → 즉시 통과 (exit 0)
+- closed promise skip (idempotent)
+- 실 fire 1회 텔레그램 도착 확인
+
+**작동 흐름** (앞으로):
+1. Aki가 ScheduleWakeup 호출 → harness가 PreToolUse hook 실행 → ledger 박힘 + 호출 deny
+2. 약속 시각 도래 → launchd가 60초 폴링 중 watchdog 실행 → 텔레그램 사용자에게 prompt + reason 전송
+3. 사용자가 텔레그램에서 자연 응답 → 다음 turn 시작 → Aki가 약속 처리
+
+**한계 (의도적)**:
+- 자동 prompt 주입 X — 사용자 manual 메시지 1번 필요 (옵션 B는 미구현)
+- ledger 무한 누적 — 향후 fired/failed > 30일 자동 archive 후속
 
 **증상**:
 - Aki가 `ScheduleWakeup` 도구로 30분/1h 후 재진입 약속
@@ -65,52 +87,48 @@
 
 ## P-002 — bot.db 평문 잔존 분석
 
-**우선순위**: 🟡 중간 (외부 유출 0이라 보류 중, ACTIVE_PROJECTS 비고)
+**상태**: ✅ 1차 처리 완료 (2026-05-07). `scripts/redact_bot_db.py` 신설.
 
-**증상**:
-- R13 사고(2026-04-26) 후 봇 시스템 프롬프트 평문 키 환경변수 이전
-- 봇 SQLite `data/bot.db`에 과거 세션 텍스트 잔존 가능성
-- 실외부 노출 0 = 즉시 시급성 낮으나 cleanup 가치
+**경위 (2026-05-07)**:
+- 6 패턴 정규식(sk-/Bearer/AIza/gho_/eyJhbG/api_key/TELEGRAM_BOT_TOKEN) + bot_token 9-12digits:35chars
+- 백업 후 atomic UPDATE: 6 row 10 redact 적용
+- 사후 단순 substring 카운트 그대로(65건) — spot check 결과:
+  - row 534 등: R13 처방 자체 박힌 메타 텍스트 (`sk-*, Bearer *` 같은 패턴 자체 인용)
+  - .env.example placeholder (`TELEGRAM_BOT_TOKEN=`) 값 없음
+  - 키 prefix fragment 12자 (전체 키 entropy 600bit급 → reverse 불가)
+- 추가 자동 redact = 위양성 폭증 → 운영 messages 가독성 깨짐 → **그만**
 
-**작업**:
-- bot.db 안 messages 테이블 sample → R13 redact 패턴 6종으로 grep
-- 매칭 row UPDATE로 redact 처리
-- migration 스크립트화
-
-**의존**: 없음
+**파일**: `~/Projects/claude-captain-hook/scripts/redact_bot_db.py` (백업 자동 + dry-run 옵션)
 
 ---
 
 ## P-003 — 봇 self-restart 트리거
 
-**우선순위**: 🟡 중간 (R12 마찰 해소, 장기)
+**상태**: ✅ 50% 완료 — 기본 self-restart 인프라 작동 중 (2026-05-07 점검).
 
-**증상**:
-- API_ERROR (R12) 발생 시 captain-hook이 푸시는 하지만 봇 자체는 살아있음
-- 사용자가 수동 `pkill + nohup` 재시작해야 함
-- 마찰 해소 가치
+**현황 (2026-05-07 발견)**:
+- 봇은 launchd `com.inseyeol.claude-code-telegram` 가동 (nohup 아님 — PATCHTODO 정보 outdated)
+- plist `KeepAlive=true` + `ThrottleInterval=10` → **봇 crash 시 자동 재시작 작동 중**
+- 즉 R12 API_ERROR로 봇 process 죽으면 launchd가 10초 후 재시작
+- 누적 health check + 자체 SIGTERM 임계는 별도 후속 (현재 우선순위 낮음)
 
-**작업 후보**:
-- captain-hook decision log에 "API_ERROR 누적 N회" 임계 → 자체 SIGTERM + launchd KeepAlive 활용
-- 또는 watchdog 별도 daemon에서 봇 health check + self-restart
-
-**의존**:
-- 봇 launchd 등록 (현재 nohup 직접 가동, launchd 미설치)
-- 기존 R16(단일 인스턴스 검증) 가이드와 통합 필요
+**남은 후속 (필요 시)**:
+- captain-hook decision log "API_ERROR 누적 N회" 임계 → 자체 SIGTERM (현재는 봇이 안 죽으면 재시작 안 됨)
+- 봇 본체 health endpoint + watchdog daemon 별도 polling
+- → 우선순위 🟢 낮음 (현재 자연 self-restart로 충분)
 
 ---
 
 ## P-004 — Transcript fsync 보강 (Stop hook race 후속)
 
-**우선순위**: 🟢 낮음 (v1.1 STOP_HOOK_RACE 처방으로 1차 해결)
+**상태**: ⏸ **공식 보류 결정 (2026-05-07)** — captain-hook 영역 외, harness upstream PR 후보.
 
-**증상**:
-- Stop hook fire 시점에 transcript JSONL flush 지연
-- v1.1에서 stop_hook_active + UUID + 폴링으로 우회
+**결정 사유**:
+- v1.1 STOP_HOOK_RACE 처방(stop_hook_active + UUID + 폴링)으로 운영상 1차 해결
+- 근본 fix는 harness transcript writer fsync 강제 — Anthropic 측 코드 변경 필요
+- captain-hook 자체 영역에서 추가 처방 가치 없음 (이미 폴링으로 race 차단)
 
-**근본 보강 후보**:
-- harness 측 transcript writer에 fsync 강제 옵션 (upstream PR 후보)
-- captain-hook 영역 외 — 메모만 박제
+**향후 진입 조건**: Anthropic harness가 transcript fsync 옵션 노출 시 활용. 그 전까진 dormant.
 
 ---
 
