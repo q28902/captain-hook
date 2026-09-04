@@ -13,6 +13,8 @@ stack: [stream-json 파서]
 ---
 
 ## 결정 (append only)
+
+- **2026-09-04 — 감시자 자신의 침묵을 없앴다(P1.7).** 인세열님 지적: 「지금 우리가 감사하면서 했던 실수들이 여기 몇개 있다」. 실제로 있었다. `classify()` 가 예외를 만나면 `TURN_PROGRESS`(=아직 진행 중)를, `silent_detector_decide()` 가 예외를 만나면 `None`(=푸시 안 함)을 돌려줬다. **둘 다 「알림 없음」과 같은 뜻**이라, 조용한 종료를 잡는 도구가 **자기 고장에는 조용해지는** 구조였다. 이 프로젝트가 막으려는 형태를 이 프로젝트가 갖고 있던 셈이다. 오늘 감사에서 같은 형태를 여러 번 잡았다 — 「미성립을 통과로 세기」·「게이트가 빈 통과」·「stderr 만 찍고 아무도 안 봄」. 수리: `TURN_CLASSIFY_FAILED` 분류 신설 · 두 예외 경로 모두 **`level="error"` 푸시**로 전환 · 사유를 `state.classify_error` 에 보존. 실측: 분류기 고장 → `classify_failed` + error 푸시, 감시자 고장(직렬화 불가 입력) → error 푸시. 테스트 3건 추가, 전 분기 PASS
 - 2026-09-02 | [declared] — → 보존 | 초기 등록(5차 승인, 근거 PROJECT.md 최초 커밋(~/Projects/claude-captain-hook)) · 이 날짜는 선언일이 아니라 **정본이 처음 버전관리에 들어온 날**이다(2026-09-02 일괄 커밋). 선언 자체는 그 이전이나 시행일 근거가 이것뿐이다.
 - 2026-04-26 | sample2 bridge.js 검토 → 단독 운용 거부 → Captain Hook 신설 결정 | 근거: 07_MEMORY_MAP.md §G 일일기록 타임라인
 - 2026-04-27 | 누적 위험 R10~R22 처리. ProductionConfig 강제 override 회피(R18) · 텔레그램 spoiler 해석 차단(R19) · 단일 인스턴스 검증(R16) | 근거: 07_MEMORY_MAP.md §G 일일기록 타임라인

@@ -40,6 +40,11 @@ class TurnEnd(Enum):
     TURN_END_SILENT = "silent"              # last_meaningful_stop_reason == "tool_use"
     TURN_END_NORMAL = "normal"
     TURN_PROGRESS = "progress"
+    # 2026-09-04 신설 — **분류기 자신이 터진 상태**. 옛 판은 이때 TURN_PROGRESS
+    # (아직 진행 중)를 돌려줬는데, 그건 「알림 없음」과 같은 뜻이라 감시자가
+    # 고장나면 조용해졌다. 조용한 종료를 잡는 도구가 자기 고장에는 조용한 것이
+    # 이 프로젝트가 막으려는 바로 그 형태다. 미성립은 정상이 아니다.
+    TURN_CLASSIFY_FAILED = "classify_failed"
 
 
 # ============================================================
@@ -92,6 +97,7 @@ class TurnState:
     failed_tool_name: Optional[str] = None          # 첫 실패 도구
     failed_tool_content: Optional[str] = None       # 첫 실패 결과 (stderr tail)
     ask_user_input: Optional[dict] = None           # AskUserQuestion input
+    classify_error: Optional[str] = None            # 분류기 자신이 터진 사유 (2026-09-04)
 
     # 텍스트 응답 흔적
     has_text_block: bool = False
@@ -199,8 +205,10 @@ def classify(raw_data: Any, state: TurnState) -> TurnEnd:
 
         return TurnEnd.TURN_PROGRESS
     except Exception as e:
+        # stderr 는 훅 실행 환경에서 아무도 안 본다. 분류 실패는 **푸시로** 나간다.
         print(f"[captain-hook P1] classify failed: {e}", file=sys.stderr, flush=True)
-        return TurnEnd.TURN_PROGRESS
+        state.classify_error = f"{type(e).__name__}: {e}"[:300]
+        return TurnEnd.TURN_CLASSIFY_FAILED
 
 
 # ============================================================
@@ -213,6 +221,14 @@ def silent_detector_decide(state: TurnState, classification: TurnEnd) -> Optiona
     봇 본체가 자체 통보 안 하면 사용자가 모름 (실측 1건 발생).
     """
     try:
+        if classification == TurnEnd.TURN_CLASSIFY_FAILED:
+            # 분류를 못 했다 = 이 turn 이 정상이었는지 **모른다**. 모르는 것을
+            # 조용히 넘기지 않는다(2026-09-04).
+            why = getattr(state, "classify_error", "") or "사유 미상"
+            return {
+                "text": f"🛑 captain-hook 분류 실패 — 이 turn 의 정상 여부를 판정하지 못했다.\n```\n{why}\n```",
+                "level": "error",
+            }
         if classification == TurnEnd.TURN_END_API_ERROR:
             # API_ERROR는 기본 가드 무시 — turn 자체가 강제 종료라 알림 필수
             return {
@@ -249,8 +265,13 @@ def silent_detector_decide(state: TurnState, classification: TurnEnd) -> Optiona
                 "level": "info",
             }
     except Exception as e:
+        # 옛 판은 여기서 None(=푸시 안 함)을 돌려줬다. **감시자의 고장이 가장
+        # 조용한 실패가 되는** 구조였다. 감시자가 죽으면 시끄러워야 한다.
         print(f"[captain-hook P1] silent_detector failed: {e}", file=sys.stderr)
-        return None
+        return {
+            "text": f"🛑 captain-hook 감시자 오류 — 이 turn 을 감시하지 못했다.\n```\n{type(e).__name__}: {e}\n```"[:900],
+            "level": "error",
+        }
 
 
 # ============================================================

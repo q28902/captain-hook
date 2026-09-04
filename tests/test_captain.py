@@ -341,6 +341,32 @@ def main() -> int:
     else:
         print("  [OK] 7) Fail-safe: None input handled gracefully")
 
+    # ── 2026-09-04: 감시자 자신의 고장 (P1.7) ──────────────────────
+    # 옛 판은 분류기가 터지면 TURN_PROGRESS(=알림 없음), 감시자가 터지면
+    # None(=푸시 없음)을 돌려줬다. **조용한 종료를 잡는 도구가 자기 고장에는
+    # 조용한** 구조였다. 미성립은 정상이 아니다 — 시끄러워야 한다.
+    class _Boom(dict):
+        def get(self, *a, **k):
+            raise RuntimeError("판정 불가")
+
+    st = TurnState()
+    got = classify(_Boom(), st)
+    ok = got == TurnEnd.TURN_CLASSIFY_FAILED
+    fails += 0 if ok else 1
+    print(f"  {'✅' if ok else '❌'} 분류기 고장 → CLASSIFY_FAILED: got {got.value}")
+
+    push = silent_detector_decide(st, got)
+    ok = bool(push) and push.get("level") == "error"
+    fails += 0 if ok else 1
+    print(f"  {'✅' if ok else '❌'} 분류 실패는 error 로 푸시된다: {bool(push)}")
+
+    st2 = TurnState(last_user_tool_name="Bash", last_meaningful_stop_reason="tool_use")
+    st2.last_user_tool_input = {"x": object()}      # json.dumps 가 터진다
+    push2 = silent_detector_decide(st2, TurnEnd.TURN_END_SILENT)
+    ok = bool(push2) and push2.get("level") == "error"
+    fails += 0 if ok else 1
+    print(f"  {'✅' if ok else '❌'} 감시자 고장도 침묵하지 않는다: {bool(push2)}")
+
     print(f"\n{'='*40}")
     if fails == 0:
         print(f"[PASS] All branches OK")
