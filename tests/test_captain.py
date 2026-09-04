@@ -367,6 +367,17 @@ def main() -> int:
     fails += 0 if ok else 1
     print(f"  {'✅' if ok else '❌'} 감시자 고장도 침묵하지 않는다: {bool(push2)}")
 
+    # 자기고장 알림은 **턴당 1건**이다 — classify() 는 이벤트마다 불린다.
+    st3 = TurnState()
+    n = 0
+    for _ in range(200):
+        c3 = classify(_Boom(), st3)
+        if c3 != TurnEnd.TURN_PROGRESS and silent_detector_decide(st3, c3):
+            n += 1
+    ok = n == 1
+    fails += 0 if ok else 1
+    print(f"  {'✅' if ok else '❌'} 자기고장 200회 → 푸시 {n}건 (1이어야 폭주 아님)")
+
     print(f"\n{'='*40}")
     if fails == 0:
         print(f"[PASS] All branches OK")

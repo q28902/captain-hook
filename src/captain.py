@@ -98,6 +98,10 @@ class TurnState:
     failed_tool_content: Optional[str] = None       # 첫 실패 결과 (stderr tail)
     ask_user_input: Optional[dict] = None           # AskUserQuestion input
     classify_error: Optional[str] = None            # 분류기 자신이 터진 사유 (2026-09-04)
+    # 🔴 자기고장 알림은 **턴당 1건**이다. classify() 는 스트림 이벤트마다 불리므로
+    # 플래그 없이 두면 한 턴에 수백 건이 나간다(2026-09-04 실측: 200 이벤트 → 200 푸시).
+    # 시끄럽게 만들려다 못 쓰게 만드는 것이 이 수정의 실패 모드였다.
+    self_error_pushed: bool = False
 
     # 텍스트 응답 흔적
     has_text_block: bool = False
@@ -223,7 +227,13 @@ def silent_detector_decide(state: TurnState, classification: TurnEnd) -> Optiona
     try:
         if classification == TurnEnd.TURN_CLASSIFY_FAILED:
             # 분류를 못 했다 = 이 turn 이 정상이었는지 **모른다**. 모르는 것을
-            # 조용히 넘기지 않는다(2026-09-04).
+            # 조용히 넘기지 않는다(2026-09-04). 단 **턴당 1건**이다.
+            if getattr(state, "self_error_pushed", False):
+                return None
+            try:
+                state.self_error_pushed = True
+            except Exception:
+                pass
             why = getattr(state, "classify_error", "") or "사유 미상"
             return {
                 "text": f"🛑 captain-hook 분류 실패 — 이 turn 의 정상 여부를 판정하지 못했다.\n```\n{why}\n```",
@@ -268,6 +278,12 @@ def silent_detector_decide(state: TurnState, classification: TurnEnd) -> Optiona
         # 옛 판은 여기서 None(=푸시 안 함)을 돌려줬다. **감시자의 고장이 가장
         # 조용한 실패가 되는** 구조였다. 감시자가 죽으면 시끄러워야 한다.
         print(f"[captain-hook P1] silent_detector failed: {e}", file=sys.stderr)
+        if getattr(state, "self_error_pushed", False):
+            return None                      # 턴당 1건
+        try:
+            state.self_error_pushed = True
+        except Exception:
+            pass
         return {
             "text": f"🛑 captain-hook 감시자 오류 — 이 turn 을 감시하지 못했다.\n```\n{type(e).__name__}: {e}\n```"[:900],
             "level": "error",
